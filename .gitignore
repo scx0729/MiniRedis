@@ -1,0 +1,21 @@
+# Build directories
+build-*/
+build/
+
+# Cache
+.cache/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*~
+
+# Compiled
+*.o
+*.a
+*.so
+*.dylib
+
+# AOF files
+*.aof
