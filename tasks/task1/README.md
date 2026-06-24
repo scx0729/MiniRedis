@@ -1,49 +1,49 @@
-# Task 1: RESP Value Types and Encoder
+# Task 1: RESP 值类型和编码器
 
-## Background
+## 背景
 
-Redis uses RESP (Redis Serialization Protocol) for client-server communication. Before we can parse incoming data, we need to represent RESP values in memory and encode them to wire format.
+Redis 使用 RESP（Redis 序列化协议）进行客户端与服务器之间的通信。在解析传入数据之前，我们需要在内存中表示 RESP 值，并将其编码为线路格式。
 
-## Learning Goals
+## 学习目标
 
-- RESP2 data model (Simple String, Error, Integer, Bulk String, Array)
-- Binary safety and why length-prefixed formats are needed
-- The difference between Null and Empty in protocol design
-- Recursive data structures (arrays can contain arrays)
+- RESP2 数据模型（简单字符串、错误、整数、批量字符串、数组）
+- 二进制安全以及为什么需要长度前缀格式
+- 协议设计中 Null 和 Empty 的区别
+- 递归数据结构（数组可以包含数组）
 
-## Your Task
+## 你的任务
 
-### 1. Implement RESP Value types
+### 1. 实现 RESP 值类型
 
-The `RespValue` class in `include/miniredis/resp/value.h` should be complete. Verify it handles all RESP2 types.
+`include/miniredis/resp/value.h` 中的 `RespValue` 类应该已经完成。验证它能处理所有 RESP2 类型。
 
-### 2. Implement the Encoder
+### 2. 实现编码器
 
-Implement `RespEncoder::Encode` in `src/resp/encoder.cpp`:
+在 `src/resp/encoder.cpp` 中实现 `RespEncoder::Encode`：
 
-- `+OK\r\n` for Simple String
-- `-ERR message\r\n` for Error
-- `:42\r\n` for Integer
-- `$5\r\nhello\r\n` for Bulk String (length-prefixed)
-- `$-1\r\n` for Null Bulk String
-- `*2\r\n$3\r\nfoo\r\n$3\r\nbar\r\n` for Array
-- `*-1\r\n` for Null Array
+- `+OK\r\n` 表示简单字符串
+- `-ERR message\r\n` 表示错误
+- `:42\r\n` 表示整数
+- `$5\r\nhello\r\n` 表示批量字符串（长度前缀）
+- `$-1\r\n` 表示空批量字符串（Null）
+- `*2\r\n$3\r\nfoo\r\n$3\r\nbar\r\n` 表示数组
+- `*-1\r\n` 表示空数组（Null）
 
-### 3. Write tests
+### 3. 编写测试
 
-Test cases in `tests/unit/resp_encoder_test.cpp`:
-- Empty string, string with CRLF, string with null bytes
-- Positive, negative, zero integers
-- Null vs Empty Bulk String
-- Nested arrays
-- Array with null elements
+在 `tests/unit/resp_encoder_test.cpp` 中编写测试用例：
+- 空字符串、包含 CRLF 的字符串、包含空字节的字符串
+- 正数、负数、零整数
+- Null 批量字符串 vs 空批量字符串
+- 嵌套数组
+- 包含 null 元素的数组
 
-## Files to Modify
+## 需要修改的文件
 
-- `src/resp/encoder.cpp` (required)
-- `tests/unit/resp_encoder_test.cpp` (required)
+- `src/resp/encoder.cpp`（必须）
+- `tests/unit/resp_encoder_test.cpp`（必须）
 
-## Key Interfaces
+## 关键接口
 
 ```cpp
 class RespEncoder {
@@ -53,30 +53,30 @@ public:
 };
 ```
 
-## Invariants
+## 不变量
 
-- Null Bulk String (`$-1\r\n`) is different from Empty Bulk String (`$0\r\n\r\n`)
-- Bulk String length counts bytes, not characters
-- Array length counts elements, not bytes
-- All lines end with `\r\n`
+- Null 批量字符串（`$-1\r\n`）与空批量字符串（`$0\r\n\r\n`）是不同的
+- 批量字符串的长度计算的是字节数，不是字符数
+- 数组的长度计算的是元素个数，不是字节数
+- 所有行以 `\r\n` 结尾
 
-## Common Mistakes
+## 常见错误
 
-- Confusing Null Bulk String with Empty Bulk String
-- Not binary-safe (using C string functions that stop at `\0`)
-- Wrong length calculation for Bulk String
+- 混淆 Null 批量字符串和空批量字符串
+- 不具备二进制安全（使用了在 `\0` 处停止的 C 字符串函数）
+- 批量字符串的长度计算错误
 
-## Testing
+## 测试
 
 ```bash
 cmake --build build-debug --target resp_encoder_test
 ./build-debug/resp_encoder_test
 ```
 
-## Grading
+## 评分
 
-- Correctness: 60%
-- Binary safety (null bytes, CRLF in data): 15%
-- Null vs Empty distinction: 10%
-- Code structure: 10%
-- Test coverage: 5%
+- 正确性：60%
+- 二进制安全（空字节、数据中的 CRLF）：15%
+- Null 与 Empty 的区分：10%
+- 代码结构：10%
+- 测试覆盖率：5%

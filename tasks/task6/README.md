@@ -1,71 +1,71 @@
-# Task 6: Non-blocking TCP and epoll Event Loop
+# Task 6: 非阻塞 TCP 和 epoll 事件循环
 
-## Background
+## 背景
 
-This is where everything comes together: real network I/O. You'll implement a TCP server using non-blocking sockets and epoll, handling multiple clients, partial reads/writes, and graceful shutdown.
+这是所有组件汇聚的地方：真实的网络 I/O。你将使用非阻塞 socket 和 epoll 实现一个 TCP 服务器，处理多个客户端、部分读写和优雅关闭。
 
-## Learning Goals
+## 学习目标
 
-- Socket lifecycle (socket, bind, listen, accept, close)
-- Non-blocking I/O and why it matters
-- epoll for event-driven I/O
-- Partial reads and writes
-- Connection cleanup and fd management
-- Graceful shutdown with signals
+- Socket 生命周期（socket、bind、listen、accept、close）
+- 非阻塞 I/O 及其重要性
+- 使用 epoll 进行事件驱动 I/O
+- 部分读和部分写
+- 连接清理和文件描述符管理
+- 信号处理实现优雅关闭
 
-## Your Task
+## 你的任务
 
-### 1. Implement Connection
+### 1. 实现 Connection
 
-`src/server/connection.cpp`:
-- Non-blocking read from socket to input buffer
-- Non-blocking write from output buffer to socket
-- Handle EAGAIN, EINTR, connection close
+`src/server/connection.cpp`：
+- 从 socket 非阻塞读取到输入缓冲区
+- 从输出缓冲区非阻塞写入到 socket
+- 处理 EAGAIN、EINTR、连接关闭
 
-### 2. Implement EventLoop
+### 2. 实现 EventLoop
 
-`src/server/event_loop.cpp`:
-- epoll_create, epoll_ctl, epoll_wait
-- Handle EPOLLIN, EPOLLOUT, EPOLLERR, EPOLLHUP
-- Dispatch events to callbacks
+`src/server/event_loop.cpp`：
+- epoll_create、epoll_ctl、epoll_wait
+- 处理 EPOLLIN、EPOLLOUT、EPOLLERR、EPOLLHUP
+- 将事件分发到回调函数
 
-### 3. Implement Server
+### 3. 实现 Server
 
-`src/server/server.cpp`:
-- Create listen socket (non-blocking, SO_REUSEADDR)
-- Accept connections
-- Wire up EventLoop with Session
-- Handle SIGINT/SIGTERM for graceful shutdown
+`src/server/server.cpp`：
+- 创建监听 socket（非阻塞，SO_REUSEADDR）
+- 接受连接
+- 将 EventLoop 与 Session 连接起来
+- 处理 SIGINT/SIGTERM 实现优雅关闭
 
-### 4. Implement main.cpp
+### 4. 实现 main.cpp
 
-Wire everything together with config loading.
+将所有组件与配置加载连接起来。
 
-## epoll Notes
+## epoll 注意事项
 
-- Use Level Trigger mode (simpler, correct)
-- Always drain input buffer on EPOLLIN (read until EAGAIN)
-- Register EPOLLOUT only when output buffer has data
-- Unregister EPOLLOUT when output buffer is empty
+- 使用水平触发模式（更简单、更正确）
+- EPOLLIN 时始终排空输入缓冲区（读到 EAGAIN 为止）
+- 仅在输出缓冲区有数据时注册 EPOLLOUT
+- 输出缓冲区为空时取消 EPOLLOUT 注册
 
-## Files to Modify
+## 需要修改的文件
 
-- `src/server/connection.cpp` (required)
-- `src/server/event_loop.cpp` (required)
-- `src/server/server.cpp` (required)
-- `src/main.cpp` (required)
+- `src/server/connection.cpp`（必须）
+- `src/server/event_loop.cpp`（必须）
+- `src/server/server.cpp`（必须）
+- `src/main.cpp`（必须）
 
-## Common Mistakes
+## 常见错误
 
-- Using blocking I/O (defeats the purpose of epoll)
-- Not handling partial write (data loss)
-- Not closing connections on error
-- Use-after-free when connection is destroyed while epoll still references it
-- Not ignoring SIGPIPE
+- 使用阻塞 I/O（违背了 epoll 的初衷）
+- 没有处理部分写（数据丢失）
+- 出错时没有关闭连接
+- 连接销毁后 epoll 仍引用它（use-after-free）
+- 没有忽略 SIGPIPE
 
-## Testing
+## 测试
 
-After implementation, test with:
+实现完成后，用以下命令测试：
 ```bash
 ./build-debug/miniredis-server --config config/miniredis.conf &
 redis-cli -p 6380 PING
@@ -74,10 +74,10 @@ redis-cli -p 6380 GET key
 kill %1
 ```
 
-## Grading
+## 评分
 
-- Correctness: 45%
-- Non-blocking I/O: 20%
-- Connection cleanup: 15%
-- Graceful shutdown: 10%
-- Code structure: 10%
+- 正确性：45%
+- 非阻塞 I/O：20%
+- 连接清理：15%
+- 优雅关闭：10%
+- 代码结构：10%

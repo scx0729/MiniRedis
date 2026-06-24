@@ -1,67 +1,67 @@
-# Task 4: List and Hash Commands
+# Task 4: 列表和哈希命令
 
-## Background
+## 背景
 
-Redis supports multiple data types on the same key space. This task adds List (deque-based) and Hash (ordered map) types. You'll learn about container commands, index handling, and type safety.
+Redis 在同一个键空间中支持多种数据类型。本任务添加列表（基于双端队列）和哈希（有序映射）类型。你将学习容器命令、索引处理和类型安全。
 
-## Learning Goals
+## 学习目标
 
-- Multi-type database design
-- Container operations (push, pop, range)
-- Negative index handling
-- Empty container cleanup (delete key when last element removed)
-- Deterministic output ordering
+- 多类型数据库设计
+- 容器操作（push、pop、range）
+- 负索引处理
+- 空容器清理（删除最后一个元素时删除键）
+- 确定性输出排序
 
-## Your Task
+## 你的任务
 
-### List Commands
+### 列表命令
 
-- `LPUSH key element [element ...]` - push to front, return new length
-- `RPUSH key element [element ...]` - push to back, return new length
-- `LPOP key` - remove and return front element (nil if empty)
-- `RPOP key` - remove and return back element (nil if empty)
-- `LLEN key` - return length (0 if key doesn't exist)
-- `LRANGE key start stop` - return elements in range
+- `LPUSH key element [element ...]` - 从头部压入，返回新长度
+- `RPUSH key element [element ...]` - 从尾部压入，返回新长度
+- `LPOP key` - 移除并返回头部元素（空时返回 nil）
+- `RPOP key` - 移除并返回尾部元素（空时返回 nil）
+- `LLEN key` - 返回长度（键不存在时返回 0）
+- `LRANGE key start stop` - 返回范围内的元素
 
-### Hash Commands
+### 哈希命令
 
-- `HSET key field value [field value ...]` - set fields, return count of NEW fields
-- `HGET key field` - get field value (nil if not exists)
-- `HDEL key field [field ...]` - delete fields, return count deleted
-- `HLEN key` - return number of fields
-- `HGETALL key` - return all field-value pairs in sorted order
+- `HSET key field value [field value ...]` - 设置字段，返回新增字段的数量
+- `HGET key field` - 获取字段值（不存在时返回 nil）
+- `HDEL key field [field ...]` - 删除字段，返回删除的数量
+- `HLEN key` - 返回字段数量
+- `HGETALL key` - 以排序顺序返回所有字段-值对
 
-## Index Rules (LRANGE)
+## 索引规则（LRANGE）
 
-- Supports negative indices: -1 = last element, -2 = second to last
-- Out of range indices are clamped to list boundaries
-- Returns empty array if start > stop after clamping
-- Returns empty array if key doesn't exist
+- 支持负索引：-1 = 最后一个元素，-2 = 倒数第二个
+- 越界索引会被钳制到列表边界
+- 钳制后如果 start > stop，返回空数组
+- 键不存在时返回空数组
 
-## HGETALL Order
+## HGETALL 排序
 
-For test determinism, `HGETALL` must return fields in sorted order. Use `std::map` or sort before output.
+为了测试的确定性，`HGETALL` 必须按排序顺序返回字段。使用 `std::map` 或在输出前排序。
 
-## Empty Container Cleanup
+## 空容器清理
 
-When `LPOP`/`RPOP` removes the last element, delete the key.
-When `HDEL` removes the last field, delete the key.
+当 `LPOP`/`RPOP` 删除最后一个元素时，删除该键。
+当 `HDEL` 删除最后一个字段时，删除该键。
 
-## Files to Modify
+## 需要修改的文件
 
-- `src/command/list_commands.cpp` (required)
-- `src/command/hash_commands.cpp` (required)
-- `tests/integration/list_command_test.cpp` (required)
-- `tests/integration/hash_command_test.cpp` (required)
+- `src/command/list_commands.cpp`（必须）
+- `src/command/hash_commands.cpp`（必须）
+- `tests/integration/list_command_test.cpp`（必须）
+- `tests/integration/hash_command_test.cpp`（必须）
 
-## Common Mistakes
+## 常见错误
 
-- Using `std::unordered_map` for Hash (non-deterministic HGETALL)
-- Not deleting empty keys
-- Wrong HSET return value (should be count of NEW fields, not total)
-- LRANGE with negative indices not normalized
+- 使用 `std::unordered_map` 存储哈希（HGETALL 输出不确定）
+- 不删除空键
+- HSET 返回值错误（应该是新增字段数，不是总数）
+- LRANGE 负索引没有归一化
 
-## Testing
+## 测试
 
 ```bash
 cmake --build build-debug --target list_command_test hash_command_test
@@ -69,11 +69,11 @@ cmake --build build-debug --target list_command_test hash_command_test
 ./build-debug/hash_command_test
 ```
 
-## Grading
+## 评分
 
-- Correctness: 55%
-- Index handling (negative, out of range): 15%
-- Type safety: 10%
-- Empty cleanup: 10%
-- Code structure: 5%
-- Test coverage: 5%
+- 正确性：55%
+- 索引处理（负索引、越界）：15%
+- 类型安全：10%
+- 空容器清理：10%
+- 代码结构：5%
+- 测试覆盖率：5%

@@ -218,7 +218,7 @@ def test_aof_recovery(server, tmpdir):
         stop_server(proc)
 
 
-def run_shared_tests(server, tmpdir):
+def run_shared_tests(server, tmpdir, skip_ttl=False):
     port = free_port()
     config = os.path.join(tmpdir, "server.conf")
     write_config(config, port, False)
@@ -227,15 +227,17 @@ def run_shared_tests(server, tmpdir):
         if not wait_for_port(port):
             out, err = proc.communicate(timeout=1) if proc.poll() is not None else (b"", b"")
             raise AssertionError("server did not start: " + err.decode(errors="replace"))
-        for name, fn in [
+        tests = [
             ("PING", test_ping),
             ("SET/GET", test_set_get),
             ("pipeline", test_pipeline),
             ("split command", test_split_command),
             ("half close", test_half_close),
-            ("TTL", test_ttl),
-            ("QUIT", test_quit),
-        ]:
+        ]
+        if not skip_ttl:
+            tests.append(("TTL", test_ttl))
+        tests.append(("QUIT", test_quit))
+        for name, fn in tests:
             print(f"  {name} ...", end=" ", flush=True)
             fn(port)
             print("OK")
@@ -246,6 +248,8 @@ def run_shared_tests(server, tmpdir):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--server", default=None)
+    parser.add_argument("--skip-aof", action="store_true", help="skip AOF recovery test")
+    parser.add_argument("--skip-ttl", action="store_true", help="skip TTL expiration test")
     args = parser.parse_args()
     server = args.server
     if server is None:
@@ -261,10 +265,11 @@ def main():
     tmpdir = tempfile.mkdtemp(prefix="miniredis_blackbox_")
     try:
         print(f"Using server: {server}")
-        run_shared_tests(server, tmpdir)
-        print("  AOF recovery ...", end=" ", flush=True)
-        test_aof_recovery(server, tmpdir)
-        print("OK")
+        run_shared_tests(server, tmpdir, skip_ttl=args.skip_ttl)
+        if not args.skip_aof:
+            print("  AOF recovery ...", end=" ", flush=True)
+            test_aof_recovery(server, tmpdir)
+            print("OK")
         print("All blackbox tests passed")
         return 0
     finally:

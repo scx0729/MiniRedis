@@ -1,54 +1,54 @@
-# Task 0: Error Model, ByteBuffer, and Project Setup
+# Task 0: 错误模型、ByteBuffer 和项目搭建
 
-## Background
+## 背景
 
-Before building a network server, we need foundational building blocks: a way to represent errors without exceptions, and a byte buffer that can grow and be consumed incrementally. These are essential for non-blocking I/O where you never get a complete request in one read.
+在构建网络服务器之前，我们需要一些基础组件：一种不依赖异常的错误处理方式，以及一个可以增长和逐步消费的字节缓冲区。这些对于非阻塞 I/O 至关重要，因为一次 `recv()` 调用永远无法保证获取到完整的请求。
 
-## Learning Goals
+## 学习目标
 
-After completing this task, you will understand:
-- CMake project structure and how to build/test
-- RAII (Resource Acquisition Is Initialization)
-- Error handling without exceptions using Result<T>
-- Byte buffer design for network programs
-- Why you can't assume one recv() gives you a complete request
+完成本任务后，你将理解：
+- CMake 项目结构以及如何构建和测试
+- RAII（资源获取即初始化）
+- 使用 Result<T> 进行无异常错误处理
+- 网络程序的字节缓冲区设计
+- 为什么不能假设一次 `recv()` 就能获取完整请求
 
-## Current State
+## 当前状态
 
-The project compiles and the test framework is set up. The `ByteBuffer` and `Result<T>` types have header files with interfaces defined, but the implementations are stubs.
+项目已能编译，测试框架已搭建好。`ByteBuffer` 和 `Result<T>` 类型的头文件接口已定义，但实现部分是空的桩代码。
 
-## Your Task
+## 你的任务
 
-### 1. Implement `Result<T>` (if not already complete)
+### 1. 实现 `Result<T>`（如果尚未完成）
 
-The `Result<T>` type should hold either a value of type `T` or an `Error`. It's used throughout the codebase instead of exceptions for expected failures.
+`Result<T>` 类型应持有 `T` 类型的值或一个 `Error`。在整个代码库中，它被用来替代异常处理可预期的错误。
 
-### 2. Implement `ByteBuffer`
+### 2. 实现 `ByteBuffer`
 
-Implement the `ByteBuffer` class in `src/server/byte_buffer.cpp`:
+在 `src/server/byte_buffer.cpp` 中实现 `ByteBuffer` 类：
 
-- `Append(data, len)`: Add data to the buffer. Return error if it would exceed max size.
-- `Peek()`: Return a view of unconsumed data without consuming it.
-- `Consume(n)`: Mark n bytes as consumed.
-- `Available()`: Return number of unconsumed bytes.
-- `Compact()`: Move unconsumed data to the front to reclaim space.
+- `Append(data, len)`：向缓冲区追加数据。如果超过最大大小则返回错误。
+- `Peek()`：返回未消费数据的视图，不消费数据。
+- `Consume(n)`：标记 n 字节为已消费。
+- `Available()`：返回未消费的字节数。
+- `Compact()`：将未消费的数据移到缓冲区前端以回收空间。
 
-### 3. Write tests
+### 3. 编写测试
 
-Add test cases in `tests/unit/byte_buffer_test.cpp` for:
-- Empty buffer
-- Multiple appends
-- Partial consume
-- Full consume
-- Max size enforcement
-- Data after compact
+在 `tests/unit/byte_buffer_test.cpp` 中添加测试用例：
+- 空缓冲区
+- 多次追加
+- 部分消费
+- 全部消费
+- 最大大小限制
+- 压缩后的数据
 
-## Files to Modify
+## 需要修改的文件
 
-- `src/server/byte_buffer.cpp` (required)
-- `tests/unit/byte_buffer_test.cpp` (required)
+- `src/server/byte_buffer.cpp`（必须）
+- `tests/unit/byte_buffer_test.cpp`（必须）
 
-## Key Interfaces
+## 关键接口
 
 ```cpp
 class ByteBuffer {
@@ -63,29 +63,29 @@ public:
 };
 ```
 
-## Invariants
+## 不变量
 
-- `Available()` always returns the number of bytes from `Peek()` that haven't been consumed
-- After `Consume(n)`, `Peek()` starts at byte `n` of the previous view
-- `Append` never succeeds if it would exceed `max_size`
-- `Compact()` doesn't change `Available()` data, only its position in memory
+- `Available()` 始终返回 `Peek()` 中未消费的字节数
+- `Consume(n)` 之后，`Peek()` 从之前的视图的第 n 字节开始
+- `Append` 在会超过 `max_size` 时永远不会成功
+- `Compact()` 不改变 `Available()` 的数据，只改变其在内存中的位置
 
-## Common Mistakes
+## 常见错误
 
-- Forgetting to update the consumed offset in `Consume`
-- Returning a view that includes consumed bytes from `Peek`
-- Not checking for overflow in buffer size calculations
+- 忘记在 `Consume` 中更新已消费偏移量
+- `Peek` 返回的视图包含了已消费的字节
+- 没有检查缓冲区大小计算的溢出
 
-## Testing
+## 测试
 
 ```bash
 cmake --build build-debug --target byte_buffer_test
 ./build-debug/byte_buffer_test
 ```
 
-## Grading
+## 评分
 
-- Correctness: 60%
-- Edge cases (empty, max size, consume beyond available): 20%
-- Resource safety: 10%
-- Code structure: 10%
+- 正确性：60%
+- 边界情况（空缓冲区、最大大小、消费超过可用量）：20%
+- 资源安全：10%
+- 代码结构：10%

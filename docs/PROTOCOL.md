@@ -1,88 +1,88 @@
-# MiniRedis17 RESP2 Protocol
+# MiniRedis17 RESP2 协议
 
-## Overview
+## 概述
 
-MiniRedis17 uses RESP2 (Redis Serialization Protocol) for client-server communication. All data is binary-safe.
+MiniRedis17 使用 RESP2（Redis 序列化协议）进行客户端与服务器之间的通信。所有数据都是二进制安全的。
 
-## RESP2 Data Types
+## RESP2 数据类型
 
-### Simple String
+### 简单字符串
 ```
 +OK\r\n
 ```
-Prefix: `+`, terminated by CRLF. Cannot contain CR or LF inside the value.
+前缀：`+`，以 CRLF 结尾。值内部不能包含 CR 或 LF。
 
-### Error
+### 错误
 ```
 -ERR unknown command\r\n
 ```
-Prefix: `-`, terminated by CRLF. Format: `-ERRCODE message\r\n`
+前缀：`-`，以 CRLF 结尾。格式：`-ERRCODE message\r\n`
 
-### Integer
+### 整数
 ```
 :1000\r\n
 ```
-Prefix: `:`, signed 64-bit integer in decimal, terminated by CRLF.
+前缀：`:`，十进制有符号 64 位整数，以 CRLF 结尾。
 
-### Bulk String
+### 批量字符串
 ```
 $6\r\nhello\r\n
 ```
-Prefix: `$`, followed by byte count in decimal, CRLF, then the data bytes, then CRLF.
-- Binary safe
-- Can contain \0 bytes
-- Length includes all bytes up to the specified count
+前缀：`$`，后跟十进制字节数、CRLF、数据字节、CRLF。
+- 二进制安全
+- 可以包含 \0 字节
+- 长度包含指定数量的所有字节
 
-### Null Bulk String
+### 空批量字符串（Null）
 ```
 $-1\r\n
 ```
-Represents a non-existent string (different from empty string `$0\r\n\r\n`).
+表示不存在的字符串（与空字符串 `$0\r\n\r\n` 不同）。
 
-### Array
+### 数组
 ```
 *2\r\n$3\r\nfoo\r\n$3\r\nbar\r\n
 ```
-Prefix: `*`, followed by element count, CRLF, then each element encoded in RESP format.
-- Elements can be of any type
-- Arrays can be nested
+前缀：`*`，后跟元素数量、CRLF，然后每个元素以 RESP 格式编码。
+- 元素可以是任意类型
+- 数组可以嵌套
 
-### Null Array
+### 空数组（Null）
 ```
 *-1\r\n
 ```
-Represents a non-existent array.
+表示不存在的数组。
 
-## Commands
+## 命令
 
-Commands are sent as RESP Arrays of Bulk Strings:
+命令以 RESP 批量字符串数组的形式发送：
 ```
 *2\r\n$3\r\nGET\r\n$3\r\nkey\r\n
 ```
 
-The first element is the command name (case-insensitive). Remaining elements are arguments.
+第一个元素是命令名称（大小写不敏感）。其余元素是参数。
 
-## Pipeline
+## 管线化
 
-Multiple commands can be sent on the same connection without waiting for responses. The server processes them in order and sends all responses.
+多个命令可以在同一连接上发送，无需等待响应。服务器按顺序处理并发送所有响应。
 
-## Binary Safety
+## 二进制安全
 
-Both keys and values are binary-safe. The length prefix in Bulk String ensures correct handling of \0 bytes and arbitrary binary data.
+键和值都是二进制安全的。批量字符串中的长度前缀确保正确处理 \0 字节和任意二进制数据。
 
-## Parser Requirements
+## 解析器要求
 
-The parser must be incremental:
-- Accept partial input and return NeedMoreData
-- Track state across multiple Parse() calls
-- Never assume one recv() contains a complete message
-- Handle multiple complete commands in one input chunk
-- Handle one command split across multiple input chunks
+解析器必须是增量的：
+- 接受部分输入并返回 NeedMoreData
+- 在多次 Parse() 调用之间追踪状态
+- 永远不要假设一次 recv() 包含完整消息
+- 处理一个输入块中的多个完整命令
+- 处理跨多个输入块分割的命令
 
-## Error Handling
+## 错误处理
 
-Protocol errors (malformed input) cause the server to:
-1. Send a RESP Error response
-2. Close the connection
+协议错误（格式错误的输入）导致服务器：
+1. 发送 RESP 错误响应
+2. 关闭连接
 
-This is stricter than Redis (which tries to continue) but simpler for a teaching project.
+这比 Redis 更严格（Redis 尝试继续处理），但对教学项目来说更简单。

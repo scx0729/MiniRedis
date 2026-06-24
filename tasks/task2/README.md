@@ -1,45 +1,45 @@
-# Task 2: Incremental RESP Parser
+# Task 2: 增量 RESP 解析器
 
-## Background
+## 背景
 
-Network data arrives in chunks. A single `recv()` might give you half a command, or three commands concatenated. An incremental parser processes what it has and remembers its state for the next chunk. This is the most technically challenging part of the protocol layer.
+网络数据是分块到达的。一次 `recv()` 可能只返回半个命令，或者三个命令拼接在一起。增量解析器处理当前已有的数据，并记住状态以等待下一块数据。这是协议层中技术难度最高的部分。
 
-## Learning Goals
+## 学习目标
 
-- State machine design for incremental parsing
-- Handling half-packets (need more data) vs full packets
-- Handling multiple commands in one buffer
-- Parser safety limits (max depth, max length)
-- The difference between "need more data" and "protocol error"
+- 增量解析的状态机设计
+- 处理半包（需要更多数据）与完整包
+- 处理一个缓冲区中的多个命令
+- 解析器安全限制（最大深度、最大长度）
+- "需要更多数据"和"协议错误"的区别
 
-## Your Task
+## 你的任务
 
-Implement the `RespParser` class in `src/resp/parser.cpp`. The parser must:
+在 `src/resp/parser.cpp` 中实现 `RespParser` 类。解析器必须：
 
-1. Accept partial input and return `NeedMoreData` when a complete message isn't available
-2. Parse one complete message and return it with the number of bytes consumed
-3. Preserve state between calls for incremental parsing
-4. Handle all RESP2 types (Simple String, Error, Integer, Bulk String, Array)
-5. Enforce safety limits (max bulk length, max array elements, max depth)
-6. Return `ProtocolError` for malformed input
+1. 接受部分输入，当完整消息不可用时返回 `NeedMoreData`
+2. 解析一条完整消息，返回它以及消耗的字节数
+3. 在调用之间保持状态以支持增量解析
+4. 处理所有 RESP2 类型（简单字符串、错误、整数、批量字符串、数组）
+5. 强制安全限制（最大批量长度、最大数组元素数、最大深度）
+6. 对格式错误的输入返回 `ProtocolError`
 
-### Critical Test Cases
+### 关键测试用例
 
-Your parser MUST handle:
-- Each byte fed one at a time
-- Random chunk sizes
-- Header and body separated
-- CR and LF separated across chunks
-- Multiple complete commands in one input
-- Complete command followed by half command
-- Binary data with null bytes
+你的解析器必须能处理：
+- 每次只喂入一个字节
+- 随机大小的数据块
+- 头部和体部分离
+- CR 和 LF 跨数据块分离
+- 一个输入中包含多个完整命令
+- 完整命令后跟半个命令
+- 包含空字节的二进制数据
 
-## Files to Modify
+## 需要修改的文件
 
-- `src/resp/parser.cpp` (required)
-- `tests/unit/resp_parser_test.cpp` (required)
+- `src/resp/parser.cpp`（必须）
+- `tests/unit/resp_parser_test.cpp`（必须）
 
-## Key Interfaces
+## 关键接口
 
 ```cpp
 class RespParser {
@@ -49,39 +49,39 @@ public:
 };
 
 struct ParseResult {
-    ParseStatus status;  // Complete, NeedMoreData, ProtocolError
-    size_t consumed;     // bytes consumed (valid if Complete)
-    std::optional<RespValue> value;  // parsed value (valid if Complete)
-    Error error;         // error info (valid if ProtocolError)
+    ParseStatus status;  // Complete、NeedMoreData、ProtocolError
+    size_t consumed;     // 消耗的字节数（Complete 时有效）
+    std::optional<RespValue> value;  // 解析出的值（Complete 时有效）
+    Error error;         // 错误信息（ProtocolError 时有效）
 };
 ```
 
-## Implementation Hints
+## 实现提示
 
-- Consider a state machine approach: track what you're expecting next (type prefix, CRLF, data, etc.)
-- For Bulk String: parse the length first, then accumulate data bytes
-- For Array: parse elements recursively (but watch depth limits)
-- Keep a buffer for incomplete data across calls
+- 考虑使用状态机方法：跟踪下一步期望什么（类型前缀、CRLF、数据等）
+- 对于批量字符串：先解析长度，然后累积数据字节
+- 对于数组：递归解析元素（但注意深度限制）
+- 保留一个缓冲区用于跨调用的不完整数据
 
-## Common Mistakes
+## 常见错误
 
-- Re-parsing the entire buffer from scratch on each call (wasteful, hides bugs)
-- Not tracking how many bytes were consumed (leading to re-processing)
-- Confusing `$-1\r\n` (null) with `$0\r\n\r\n` (empty)
-- Not limiting recursion depth for nested arrays
-- Returning NeedMoreData when there's actually a protocol error
+- 每次调用都从头重新解析整个缓冲区（浪费且隐藏 bug）
+- 没有跟踪消耗了多少字节（导致重复处理）
+- 混淆 `$-1\r\n`（null）和 `$0\r\n\r\n`（空）
+- 没有限制嵌套数组的递归深度
+- 实际是协议错误时却返回 NeedMoreData
 
-## Testing
+## 测试
 
 ```bash
 cmake --build build-debug --target resp_parser_test
 ./build-debug/resp_parser_test
 ```
 
-## Grading
+## 评分
 
-- Correctness: 50%
-- Incremental parsing (byte-by-byte, random chunks): 20%
-- Error handling: 15%
-- Safety limits: 10%
-- Code structure: 5%
+- 正确性：50%
+- 增量解析（逐字节、随机数据块）：20%
+- 错误处理：15%
+- 安全限制：10%
+- 代码结构：5%

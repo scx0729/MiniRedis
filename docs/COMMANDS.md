@@ -1,180 +1,180 @@
-# MiniRedis17 Supported Commands
+# MiniRedis17 支持的命令
 
-## Connection Commands
+## 连接命令
 
 ### PING
-- **Arity**: -1 (variable)
-- **Returns**: PONG, or echoes argument
-- **Examples**:
+- **参数数量**：-1（可变）
+- **返回**：PONG，或回显参数
+- **示例**：
   - `PING` → `+PONG\r\n`
   - `PING hello` → `$5\r\nhello\r\n`
 
 ### ECHO message
-- **Arity**: 2
-- **Returns**: Bulk String (the message)
-- **Example**: `ECHO hello` → `$5\r\nhello\r\n`
+- **参数数量**：2
+- **返回**：批量字符串（消息内容）
+- **示例**：`ECHO hello` → `$5\r\nhello\r\n`
 
 ### QUIT
-- **Arity**: 1
-- **Returns**: +OK
-- **Effect**: Closes connection after sending response
+- **参数数量**：1
+- **返回**：+OK
+- **效果**：发送响应后关闭连接
 
-## Generic Key Commands
+## 通用键命令
 
 ### DEL key [key ...]
-- **Arity**: -2
-- **Returns**: Integer (number of keys removed)
-- **Note**: Ignores non-existent keys
+- **参数数量**：-2
+- **返回**：整数（被删除的键数量）
+- **说明**：忽略不存在的键
 
 ### EXISTS key [key ...]
-- **Arity**: -2
-- **Returns**: Integer (number of keys that exist)
+- **参数数量**：-2
+- **返回**：整数（存在的键数量）
 
 ### TYPE key
-- **Arity**: 2
-- **Returns**: Simple String (none/string/list/hash)
+- **参数数量**：2
+- **返回**：简单字符串（none/string/list/hash）
 
-## String Commands
+## 字符串命令
 
 ### SET key value [EX seconds] [PX milliseconds] [NX|XX]
-- **Arity**: -3
-- **Returns**: OK, or nil if NX/XX condition not met
-- **Options**:
-  - `EX seconds` - set expiry in seconds
-  - `PX milliseconds` - set expiry in milliseconds
-  - `NX` - only set if key does not exist
-  - `XX` - only set if key already exists
-- **Behavior**: Overwrites existing value. Clears existing TTL unless new TTL specified.
-- **Conflict rules**: Last EX/PX wins. NX and XX are mutually exclusive; last one wins.
+- **参数数量**：-3
+- **返回**：OK，如果 NX/XX 条件不满足则返回 nil
+- **选项**：
+  - `EX seconds` - 以秒为单位设置过期时间
+  - `PX milliseconds` - 以毫秒为单位设置过期时间
+  - `NX` - 仅在键不存在时设置
+  - `XX` - 仅在键存在时设置
+- **行为**：覆盖已有的值。除非指定了新的 TTL，否则清除已有的 TTL。
+- **冲突规则**：EX/PX 以最后一个为准。NX 和 XX 互斥，以最后一个为准。
 
 ### GET key
-- **Arity**: 2
-- **Returns**: Bulk String or nil
-- **Error**: WRONGTYPE if key holds non-string type
+- **参数数量**：2
+- **返回**：批量字符串或 nil
+- **错误**：如果键持有非字符串类型，返回 WRONGTYPE
 
 ### MSET key value [key value ...]
-- **Arity**: -3 (odd number of args = error)
-- **Returns**: +OK
-- **Note**: Atomic set of multiple keys
+- **参数数量**：-3（参数个数为奇数时报错）
+- **返回**：+OK
+- **说明**：原子性地设置多个键
 
 ### MGET key [key ...]
-- **Arity**: -2
-- **Returns**: Array of Bulk Strings (nil for missing keys)
+- **参数数量**：-2
+- **返回**：批量字符串数组（不存在的键返回 nil）
 
 ### APPEND key value
-- **Arity**: 3
-- **Returns**: Integer (length of string after append)
-- **Note**: Creates key if not exists
+- **参数数量**：3
+- **返回**：整数（追加后的字符串长度）
+- **说明**：键不存在时创建
 
 ### STRLEN key
-- **Arity**: 2
-- **Returns**: Integer (length of string), 0 if key not exists
-- **Error**: WRONGTYPE if key holds non-string type
+- **参数数量**：2
+- **返回**：整数（字符串长度），键不存在时返回 0
+- **错误**：如果键持有非字符串类型，返回 WRONGTYPE
 
 ### INCR key
-- **Arity**: 2
-- **Returns**: Integer (value after increment)
-- **Note**: If key not exists, starts from 0. Error if value is not integer. Checks int64_t overflow.
+- **参数数量**：2
+- **返回**：整数（递增后的值）
+- **说明**：键不存在时从 0 开始。值不是整数时返回错误。检查 int64_t 溢出。
 
 ### DECR key
-- **Arity**: 2
-- **Returns**: Integer (value after decrement)
-- **Note**: Same rules as INCR
+- **参数数量**：2
+- **返回**：整数（递减后的值）
+- **说明**：规则与 INCR 相同
 
-## List Commands
+## 列表命令
 
 ### LPUSH key element [element ...]
-- **Arity**: -3
-- **Returns**: Integer (list length after push)
+- **参数数量**：-3
+- **返回**：整数（压入后的列表长度）
 
 ### RPUSH key element [element ...]
-- **Arity**: -3
-- **Returns**: Integer (list length after push)
+- **参数数量**：-3
+- **返回**：整数（压入后的列表长度）
 
 ### LPOP key
-- **Arity**: 2
-- **Returns**: Bulk String or nil
-- **Note**: Removes key if list becomes empty
+- **参数数量**：2
+- **返回**：批量字符串或 nil
+- **说明**：列表变空时删除键
 
 ### RPOP key
-- **Arity**: 2
-- **Returns**: Bulk String or nil
-- **Note**: Removes key if list becomes empty
+- **参数数量**：2
+- **返回**：批量字符串或 nil
+- **说明**：列表变空时删除键
 
 ### LLEN key
-- **Arity**: 2
-- **Returns**: Integer (list length), 0 if key not exists
-- **Error**: WRONGTYPE if key holds non-list type
+- **参数数量**：2
+- **返回**：整数（列表长度），键不存在时返回 0
+- **错误**：如果键持有非列表类型，返回 WRONGTYPE
 
 ### LRANGE key start stop
-- **Arity**: 4
-- **Returns**: Array of Bulk Strings
-- **Note**:
-  - Supports negative indices (-1 = last element)
-  - Out of range indices are clamped
-  - Returns empty array if key not exists
+- **参数数量**：4
+- **返回**：批量字符串数组
+- **说明**：
+  - 支持负索引（-1 = 最后一个元素）
+  - 越界索引会被钳制
+  - 键不存在时返回空数组
 
-## Hash Commands
+## 哈希命令
 
 ### HSET key field value [field value ...]
-- **Arity**: -4
-- **Returns**: Integer (number of new fields added, not counting updated fields)
+- **参数数量**：-4
+- **返回**：整数（新增字段的数量，不包括更新的字段）
 
 ### HGET key field
-- **Arity**: 3
-- **Returns**: Bulk String or nil
+- **参数数量**：3
+- **返回**：批量字符串或 nil
 
 ### HDEL key field [field ...]
-- **Arity**: -3
-- **Returns**: Integer (number of fields removed)
+- **参数数量**：-3
+- **返回**：整数（删除的字段数量）
 
 ### HLEN key
-- **Arity**: 2
-- **Returns**: Integer (number of fields), 0 if key not exists
-- **Error**: WRONGTYPE if key holds non-hash type
+- **参数数量**：2
+- **返回**：整数（字段数量），键不存在时返回 0
+- **错误**：如果键持有非哈希类型，返回 WRONGTYPE
 
 ### HGETALL key
-- **Arity**: 2
-- **Returns**: Array of Bulk Strings [field1, value1, field2, value2, ...]
-- **Note**: Returns fields in sorted order (deterministic for testing)
+- **参数数量**：2
+- **返回**：批量字符串数组 [field1, value1, field2, value2, ...]
+- **说明**：按排序顺序返回字段（用于测试的确定性）
 
-## TTL Commands
+## TTL 命令
 
 ### EXPIRE key seconds
-- **Arity**: 3
-- **Returns**: 1 if timeout set, 0 if key not exists
+- **参数数量**：3
+- **返回**：1 表示设置成功，0 表示键不存在
 
 ### PEXPIRE key milliseconds
-- **Arity**: 3
-- **Returns**: 1 if timeout set, 0 if key not exists
+- **参数数量**：3
+- **返回**：1 表示设置成功，0 表示键不存在
 
 ### TTL key
-- **Arity**: 2
-- **Returns**: Integer (TTL in seconds), -1 if no expiry, -2 if key not exists
-- **Note**: Rounded down (floor)
+- **参数数量**：2
+- **返回**：整数（TTL 秒数），-1 表示无过期时间，-2 表示键不存在
+- **说明**：向下取整
 
 ### PTTL key
-- **Arity**: 2
-- **Returns**: Integer (TTL in milliseconds), -1 if no expiry, -2 if key not exists
+- **参数数量**：2
+- **返回**：整数（TTL 毫秒数），-1 表示无过期时间，-2 表示键不存在
 
 ### PERSIST key
-- **Arity**: 2
-- **Returns**: 1 if expiry removed, 0 if key not exists or has no expiry
+- **参数数量**：2
+- **返回**：1 表示过期时间已移除，0 表示键不存在或无过期时间
 
-## TTL Semantics
+## TTL 语义
 
-- `SET key value` clears existing TTL
-- `SET key value EX n` sets new TTL
-- `INCR`, `APPEND`, `LPUSH`, etc. preserve existing TTL
-- `EXPIRE` on non-existent key returns 0
-- `EXPIRE` with <= 0 seconds immediately deletes the key
-- TTL is stored in milliseconds internally
-- `TTL` returns floor(seconds_remaining)
-- Expired keys are removed lazily (on access) and actively (periodic sweep)
+- `SET key value` 清除已有的 TTL
+- `SET key value EX n` 设置新的 TTL
+- `INCR`、`APPEND`、`LPUSH` 等保留已有的 TTL
+- `EXPIRE` 对不存在的键返回 0
+- `EXPIRE` 秒数 <= 0 时立即删除键
+- TTL 内部以毫秒存储
+- `TTL` 返回剩余秒数的向下取整
+- 过期键通过惰性删除（访问时）和主动删除（周期性扫描）清理
 
-## Differences from Redis
+## 与 Redis 的差异
 
-- HGETALL returns fields in sorted order (Redis uses unspecified order from dict)
-- Protocol errors disconnect the client (Redis tries to continue)
-- No MULTI/EXEC, SUBSCRIBE, etc. (see out of scope)
-- Configuration syntax is simplified (key=value, not Redis config format)
+- HGETALL 按排序顺序返回字段（Redis 使用 dict 的未指定顺序）
+- 协议错误会断开客户端连接（Redis 尝试继续处理）
+- 没有 MULTI/EXEC、SUBSCRIBE 等（参见范围外功能）
+- 配置语法简化（key=value，非 Redis 配置格式）

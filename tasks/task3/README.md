@@ -1,29 +1,29 @@
-# Task 3: Database and String Commands
+# Task 3: 数据库和字符串命令
 
-## Background
+## 背景
 
-Now that we can parse RESP and encode responses, we need a storage engine and commands. The database maps keys (binary-safe strings) to typed values. This task introduces the type system and String commands.
+现在我们能解析 RESP 和编码响应了，接下来需要一个存储引擎和命令。数据库将键（二进制安全的字符串）映射到带类型的值。本任务介绍类型系统和字符串命令。
 
-## Learning Goals
+## 学习目标
 
-- Separation between protocol layer and storage layer
-- Type-safe value storage using std::variant
-- Command argument validation
-- Integer overflow detection
-- The difference between "key not found" and "wrong type"
+- 协议层和存储层的分离
+- 使用 std::variant 进行类型安全的值存储
+- 命令参数校验
+- 整数溢出检测
+- "键不存在"和"类型错误"的区别
 
-## Your Task
+## 你的任务
 
-### 1. Implement Database
+### 1. 实现数据库
 
-Implement the `Database` class in `src/storage/database.cpp`:
-- String value storage
-- Get/Set/Del/Exists/Type operations
-- Type checking (WrongType error when using wrong command on wrong type)
+在 `src/storage/database.cpp` 中实现 `Database` 类：
+- 字符串值存储
+- Get/Set/Del/Exists/Type 操作
+- 类型检查（对错误类型的键使用命令时返回 WrongType 错误）
 
-### 2. Implement String Commands
+### 2. 实现字符串命令
 
-Implement commands in `src/command/string_commands.cpp`:
+在 `src/command/string_commands.cpp` 中实现命令：
 - `SET key value [EX seconds] [PX milliseconds] [NX|XX]`
 - `GET key`
 - `MSET key value [key value ...]`
@@ -32,43 +32,43 @@ Implement commands in `src/command/string_commands.cpp`:
 - `STRLEN key`
 - `INCR key` / `DECR key`
 
-### 3. Implement Generic Commands
+### 3. 实现通用命令
 
 - `DEL key [key ...]`
 - `EXISTS key [key ...]`
 - `TYPE key`
 
-### 4. Write Tests
+### 4. 编写测试
 
-## SET Options
+## SET 选项
 
-- `EX seconds` - set expiry (covered in Task 7, but parsing should work now)
-- `PX milliseconds` - set expiry in ms
-- `NX` - only set if key doesn't exist
-- `XX` - only set if key exists
-- Last NX/XX wins if both specified
+- `EX seconds` - 设置过期时间（Task 7 详细讲解，但现在解析应该能工作）
+- `PX milliseconds` - 以毫秒设置过期时间
+- `NX` - 仅在键不存在时设置
+- `XX` - 仅在键存在时设置
+- 如果同时指定 NX 和 XX，后者生效
 
-## INCR/DECR Rules
+## INCR/DECR 规则
 
-- If key doesn't exist, treat as 0 before incrementing
-- If value is not a valid integer, return error
-- Check for int64_t overflow
+- 如果键不存在，先当作 0 再递增
+- 如果值不是有效的整数，返回错误
+- 检查 int64_t 溢出
 
-## Files to Modify
+## 需要修改的文件
 
-- `src/storage/database.cpp` (required)
-- `src/command/string_commands.cpp` (required)
-- `tests/unit/database_test.cpp` (required)
-- `tests/integration/string_command_test.cpp` (required)
+- `src/storage/database.cpp`（必须）
+- `src/command/string_commands.cpp`（必须）
+- `tests/unit/database_test.cpp`（必须）
+- `tests/integration/string_command_test.cpp`（必须）
 
-## Common Mistakes
+## 常见错误
 
-- Not checking type before operations (LLEN on a String key should error)
-- Using `atoi` for integer parsing (doesn't detect errors)
-- Not handling int64_t overflow in INCR/DECR
-- SET NX returning OK even when key already exists
+- 操作前不检查类型（对 String 键执行 LLEN 应该报错）
+- 使用 `atoi` 解析整数（不能检测错误）
+- INCR/DECR 没有处理 int64_t 溢出
+- SET NX 在键已存在时仍返回 OK
 
-## Testing
+## 测试
 
 ```bash
 cmake --build build-debug --target database_test string_command_test
@@ -76,10 +76,10 @@ cmake --build build-debug --target database_test string_command_test
 ./build-debug/string_command_test
 ```
 
-## Grading
+## 评分
 
-- Correctness: 55%
-- Type safety (WrongType errors): 15%
-- Edge cases (empty value, binary data, overflow): 15%
-- Code structure: 10%
-- Test coverage: 5%
+- 正确性：55%
+- 类型安全（WrongType 错误）：15%
+- 边界情况（空值、二进制数据、溢出）：15%
+- 代码结构：10%
+- 测试覆盖率：5%

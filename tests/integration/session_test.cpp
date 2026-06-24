@@ -118,4 +118,40 @@ TEST(session_unknown_command) {
     ASSERT_EQ(r.type(), RespType::kError);
 }
 
+
+TEST(session_process_input_buffer_pipeline) {
+    FakeClock clock;
+    Expiration exp(clock);
+    Database db(clock, &exp);
+    CommandRegistry registry;
+    CommandContext ctx{&db, nullptr};
+    Connection conn(-1);
+    Session session(conn, db, registry, ctx);
+
+    std::string pipeline;
+    pipeline += MakeCommand({"SET", "key", "value"});
+    pipeline += MakeCommand({"GET", "key"});
+    ASSERT_TRUE(conn.InputBuffer().Append(pipeline).ok());
+
+    ASSERT_TRUE(session.ProcessInput());
+    std::string out(conn.OutputBuffer().Peek());
+    ASSERT_EQ(out, "+OK\r\n$5\r\nvalue\r\n");
+    ASSERT_EQ(conn.InputBuffer().Available(), 0u);
+}
+
+TEST(session_process_input_buffer_quit) {
+    FakeClock clock;
+    Expiration exp(clock);
+    Database db(clock, &exp);
+    CommandRegistry registry;
+    CommandContext ctx{&db, nullptr};
+    Connection conn(-1);
+    Session session(conn, db, registry, ctx);
+
+    ASSERT_TRUE(conn.InputBuffer().Append(MakeCommand({"QUIT"})).ok());
+    ASSERT_TRUE(session.ProcessInput());
+    ASSERT_TRUE(conn.IsClosing());
+    ASSERT_EQ(std::string(conn.OutputBuffer().Peek()), "+OK\r\n");
+}
+
 TEST_MAIN()
