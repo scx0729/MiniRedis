@@ -33,18 +33,18 @@ bool RespParser::HasBufferedData() const {
     return !input_buffer_.empty();
 }
 
-size_t RespParser::FindCRLF(std::string_view, size_t) const {
+size_t RespParser::FindCRLF([[maybe_unused]] std::string_view input, [[maybe_unused]] size_t offset) const {
     // TODO(Task 2): find a CRLF line terminator.
     return std::string_view::npos;
 }
 
-Result<int64_t> RespParser::ParseInt(std::string_view) const {
+Result<int64_t> RespParser::ParseInt([[maybe_unused]] std::string_view text) const {
     // TODO(Task 2): parse signed decimal integers without accepting junk suffixes.
     return Result<int64_t>::Err(ErrorCode::kProtocolError,
                                 "TODO(Task 2): RespParser::ParseInt");
 }
 
-ParseResult RespParser::ParseInternal(std::string_view, size_t&, size_t) {
+ParseResult RespParser::ParseInternal([[maybe_unused]] std::string_view input, [[maybe_unused]] size_t& offset, [[maybe_unused]] size_t depth) {
     // TODO(Task 2): parse one RESP value from the given buffer and update offset.
     return ParseResult::NeedMoreData();
 }

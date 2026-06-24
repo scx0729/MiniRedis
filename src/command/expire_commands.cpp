@@ -3,10 +3,10 @@
 
 namespace miniredis {
 
-RespValue cmd_expire(CommandContext&, const std::vector<std::string>&) { return RespValue::Integer(0); }
-RespValue cmd_pexpire(CommandContext&, const std::vector<std::string>&) { return RespValue::Integer(0); }
-RespValue cmd_ttl(CommandContext&, const std::vector<std::string>&) { return RespValue::Integer(-2); }
-RespValue cmd_pttl(CommandContext&, const std::vector<std::string>&) { return RespValue::Integer(-2); }
-RespValue cmd_persist(CommandContext&, const std::vector<std::string>&) { return RespValue::Integer(0); }
+RespValue cmd_expire([[maybe_unused]] CommandContext& ctx, [[maybe_unused]] const std::vector<std::string>& args) { return RespValue::Integer(0); }
+RespValue cmd_pexpire([[maybe_unused]] CommandContext& ctx, [[maybe_unused]] const std::vector<std::string>& args) { return RespValue::Integer(0); }
+RespValue cmd_ttl([[maybe_unused]] CommandContext& ctx, [[maybe_unused]] const std::vector<std::string>& args) { return RespValue::Integer(-2); }
+RespValue cmd_pttl([[maybe_unused]] CommandContext& ctx, [[maybe_unused]] const std::vector<std::string>& args) { return RespValue::Integer(-2); }
+RespValue cmd_persist([[maybe_unused]] CommandContext& ctx, [[maybe_unused]] const std::vector<std::string>& args) { return RespValue::Integer(0); }
 
 }  // namespace miniredis

@@ -17,7 +17,7 @@ AofWriter::~AofWriter() {
     }
 }
 
-Result<void> AofWriter::Write(const std::string&) {
+Result<void> AofWriter::Write([[maybe_unused]] const std::string& data) {
     // TODO(Task 8): append all bytes to fd_, handling partial writes and EINTR.
     if (fd_ < 0) return Result<void>::Err(ErrorCode::kIoError, "AOF file not open");
     return Result<void>::Ok();

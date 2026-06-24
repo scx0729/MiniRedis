@@ -7,21 +7,21 @@ namespace miniredis {
 Database::Database(Clock& clock, Expiration* expiration)
     : clock_(clock), expiration_(expiration) {}
 
-Entry* Database::FindEntry(const std::string&) {
+Entry* Database::FindEntry([[maybe_unused]] const std::string& key) {
     // TODO(Task 3): find an entry and perform lazy expiration in Task 7.
     return nullptr;
 }
 
-const Entry* Database::FindEntry(const std::string&) const {
+const Entry* Database::FindEntry([[maybe_unused]] const std::string& key) const {
     // TODO(Task 3): const lookup for read-only helpers.
     return nullptr;
 }
 
-void Database::RemoveKey(const std::string&) {
+void Database::RemoveKey([[maybe_unused]] const std::string& key) {
     // TODO(Task 3): erase the key and remove expiration metadata in Task 7.
 }
 
-Result<void> Database::CheckType(const std::string&, ValueType) {
+Result<void> Database::CheckType([[maybe_unused]] const std::string& key, [[maybe_unused]] ValueType expected) {
     // TODO(Task 3): return kWrongType when an existing key has another type.
     return Result<void>::Ok();
 }
@@ -44,37 +44,37 @@ Result<HashValue*> Database::GetHashValue(const std::string& key) {
     return Result<HashValue*>::Ok(&std::get<HashValue>(it->second.value));
 }
 
-bool Database::Exists(const std::string&) {
+bool Database::Exists([[maybe_unused]] const std::string& key) {
     // TODO(Task 3): return whether a non-expired key exists.
     return false;
 }
 
-int64_t Database::Del(const std::string&) {
+int64_t Database::Del([[maybe_unused]] const std::string& key) {
     // TODO(Task 3): delete one key.
     return 0;
 }
 
-int64_t Database::Del(const std::vector<std::string>&) {
+int64_t Database::Del([[maybe_unused]] const std::vector<std::string>& keys) {
     // TODO(Task 3): delete multiple keys and return deletion count.
     return 0;
 }
 
-Result<std::string> Database::Type(const std::string&) {
+Result<std::string> Database::Type([[maybe_unused]] const std::string& key) {
     // TODO(Task 3): return none/string/list/hash.
     return Result<std::string>::Ok("none");
 }
 
-Result<void> Database::Set(const std::string&, std::string, int64_t, bool, bool) {
+Result<void> Database::Set([[maybe_unused]] const std::string& key, [[maybe_unused]] std::string value, [[maybe_unused]] int64_t expire_ms, [[maybe_unused]] bool nx, [[maybe_unused]] bool xx) {
     // TODO(Task 3): set string value, implement NX/XX, and integrate TTL in Task 7.
     return Result<void>::Ok();
 }
 
-Result<std::optional<std::string>> Database::Get(const std::string&) {
+Result<std::optional<std::string>> Database::Get([[maybe_unused]] const std::string& key) {
     // TODO(Task 3): read a string value or nil.
     return Result<std::optional<std::string>>::Ok(std::string{});
 }
 
-Result<void> Database::MSet(const std::vector<std::pair<std::string, std::string>>&) {
+Result<void> Database::MSet([[maybe_unused]] const std::vector<std::pair<std::string, std::string>>& kvs) {
     // TODO(Task 3): set multiple string values atomically enough for this project.
     return Result<void>::Ok();
 }
@@ -88,101 +88,102 @@ Result<std::vector<std::optional<std::string>>> Database::MGet(
     return Result<std::vector<std::optional<std::string>>>::Ok(std::move(values));
 }
 
-Result<int64_t> Database::Append(const std::string&, const std::string&) {
+Result<int64_t> Database::Append([[maybe_unused]] const std::string& key, [[maybe_unused]] const std::string& value) {
     // TODO(Task 3): append to a string and return new length.
     return Result<int64_t>::Ok(0);
 }
 
-Result<int64_t> Database::Strlen(const std::string&) {
+Result<int64_t> Database::Strlen([[maybe_unused]] const std::string& key) {
     // TODO(Task 3): return string length or 0 for missing key.
     return Result<int64_t>::Ok(0);
 }
 
-Result<int64_t> Database::Incr(const std::string&) {
+Result<int64_t> Database::Incr([[maybe_unused]] const std::string& key) {
     // TODO(Task 3): parse int64, increment, detect overflow.
     return Result<int64_t>::Ok(0);
 }
 
-Result<int64_t> Database::Decr(const std::string&) {
+Result<int64_t> Database::Decr([[maybe_unused]] const std::string& key) {
     // TODO(Task 3): parse int64, decrement, detect overflow.
     return Result<int64_t>::Ok(0);
 }
 
-Result<int64_t> Database::LPush(const std::string&, const std::vector<std::string>&) {
+Result<int64_t> Database::LPush([[maybe_unused]] const std::string& key, [[maybe_unused]] const std::vector<std::string>& elements) {
     // TODO(Task 4): push elements at the head of a list.
     return Result<int64_t>::Ok(0);
 }
 
-Result<int64_t> Database::RPush(const std::string&, const std::vector<std::string>&) {
+Result<int64_t> Database::RPush([[maybe_unused]] const std::string& key, [[maybe_unused]] const std::vector<std::string>& elements) {
     // TODO(Task 4): push elements at the tail of a list.
     return Result<int64_t>::Ok(0);
 }
 
-Result<std::optional<std::string>> Database::LPop(const std::string&) {
+Result<std::optional<std::string>> Database::LPop([[maybe_unused]] const std::string& key) {
     // TODO(Task 4): pop the head element and delete empty lists.
     return Result<std::optional<std::string>>::Ok(std::string{});
 }
 
-Result<std::optional<std::string>> Database::RPop(const std::string&) {
+Result<std::optional<std::string>> Database::RPop([[maybe_unused]] const std::string& key) {
     // TODO(Task 4): pop the tail element and delete empty lists.
     return Result<std::optional<std::string>>::Ok(std::string{});
 }
 
-Result<int64_t> Database::LLen(const std::string&) {
+Result<int64_t> Database::LLen([[maybe_unused]] const std::string& key) {
     // TODO(Task 4): return list length or 0 for missing key.
     return Result<int64_t>::Ok(0);
 }
 
-Result<std::vector<std::string>> Database::LRange(const std::string&, int64_t, int64_t) {
+Result<std::vector<std::string>> Database::LRange([[maybe_unused]] const std::string& key, [[maybe_unused]] int64_t start, [[maybe_unused]] int64_t stop) {
     // TODO(Task 4): implement Redis-style inclusive ranges with negative indexes.
     return Result<std::vector<std::string>>::Ok({});
 }
 
 Result<int64_t> Database::HSet(
-    const std::string&, const std::vector<std::pair<std::string, std::string>>&) {
+    [[maybe_unused]] const std::string& key,
+    [[maybe_unused]] const std::vector<std::pair<std::string, std::string>>& fvs) {
     // TODO(Task 4): set hash fields and return number of newly-added fields.
     return Result<int64_t>::Ok(0);
 }
 
-Result<std::optional<std::string>> Database::HGet(const std::string&, const std::string&) {
+Result<std::optional<std::string>> Database::HGet([[maybe_unused]] const std::string& key, [[maybe_unused]] const std::string& field) {
     // TODO(Task 4): get one hash field or nil.
     return Result<std::optional<std::string>>::Ok(std::string{});
 }
 
-Result<int64_t> Database::HDel(const std::string&, const std::vector<std::string>&) {
+Result<int64_t> Database::HDel([[maybe_unused]] const std::string& key, [[maybe_unused]] const std::vector<std::string>& fields) {
     // TODO(Task 4): delete hash fields and delete empty hashes.
     return Result<int64_t>::Ok(0);
 }
 
-Result<int64_t> Database::HLen(const std::string&) {
+Result<int64_t> Database::HLen([[maybe_unused]] const std::string& key) {
     // TODO(Task 4): return hash field count.
     return Result<int64_t>::Ok(0);
 }
 
-Result<std::vector<std::string>> Database::HGetAll(const std::string&) {
+Result<std::vector<std::string>> Database::HGetAll([[maybe_unused]] const std::string& key) {
     // TODO(Task 4): return deterministic field/value pairs.
     return Result<std::vector<std::string>>::Ok({});
 }
 
-void Database::SetExpireMs(const std::string&, int64_t) {
+void Database::SetExpireMs([[maybe_unused]] const std::string& key, [[maybe_unused]] int64_t expire_ms) {
     // TODO(Task 7): set/update absolute expiration metadata.
 }
 
-void Database::ClearExpire(const std::string&) {
+void Database::ClearExpire([[maybe_unused]] const std::string& key) {
     // TODO(Task 7): remove expiration metadata.
 }
 
-int64_t Database::GetExpireMs(const std::string&) const {
+int64_t Database::GetExpireMs([[maybe_unused]] const std::string& key) const {
     // TODO(Task 7): return -2 missing, -1 persistent, or remaining ms.
     return -2;
 }
 
-bool Database::IsExpired(const std::string&) {
+bool Database::IsExpired([[maybe_unused]] const std::string& key) {
     // TODO(Task 7): check whether key is expired at current clock time.
     return false;
 }
 
-size_t Database::ExpireSample(size_t) {
+size_t Database::ExpireSample([[maybe_unused]] size_t count) {
     // TODO(Task 7): delegate active expiration to Expiration.
     return 0;
 }

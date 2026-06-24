@@ -44,15 +44,15 @@ void Server::AcceptConnection() {
     // TODO(Task 6): accept4() clients, create Connection + Session, register fd.
 }
 
-void Server::OnReadable(int) {
+void Server::OnReadable([[maybe_unused]] int fd) {
     // TODO(Task 6): read, process session input, and enable write notifications.
 }
 
-void Server::OnWritable(int) {
+void Server::OnWritable([[maybe_unused]] int fd) {
     // TODO(Task 6): flush output and close when needed.
 }
 
-void Server::CloseConnection(int) {
+void Server::CloseConnection([[maybe_unused]] int fd) {
     // TODO(Task 6): remove fd from epoll and erase connection state.
 }
 

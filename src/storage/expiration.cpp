@@ -6,20 +6,20 @@ namespace miniredis {
 
 Expiration::Expiration(Clock& clock) : clock_(clock) {}
 
-void Expiration::Add(const std::string&, int64_t) {
+void Expiration::Add([[maybe_unused]] const std::string& key, [[maybe_unused]] int64_t expire_at_ms) {
     // TODO(Task 7): push/update expiration heap entry.
 }
 
-void Expiration::Remove(const std::string&) {
+void Expiration::Remove([[maybe_unused]] const std::string& key) {
     // TODO(Task 7): mark a key as no longer actively tracked.
 }
 
-size_t Expiration::ActiveExpire(Database&, size_t) {
+size_t Expiration::ActiveExpire([[maybe_unused]] Database& db, [[maybe_unused]] size_t max_sample) {
     // TODO(Task 7): expire at most max_sample currently expired keys.
     return 0;
 }
 
-bool Expiration::HasEntry(const std::string&) const {
+bool Expiration::HasEntry([[maybe_unused]] const std::string& key) const {
     // TODO(Task 7): report whether a key has live expiration metadata.
     return false;
 }
