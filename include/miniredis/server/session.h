@@ -13,7 +13,7 @@ namespace miniredis {
 class Session {
 public:
     Session(Connection& conn, Database& db, const CommandRegistry& registry,
-            CommandContext& cmd_ctx);
+            CommandContext& cmd_ctx, ParserLimits parser_limits = {});
 
     // Process available input: parse commands, execute, encode responses.
     // Returns false if the connection should be closed.

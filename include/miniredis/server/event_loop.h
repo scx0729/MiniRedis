@@ -41,7 +41,8 @@ public:
              std::function<void(int listen_fd)> on_accept,
              std::function<void(Connection& conn)> on_readable,
              std::function<void(Connection& conn)> on_writable,
-             std::function<void(int fd)> on_close);
+             std::function<void(int fd)> on_close,
+             std::function<void()> on_tick = nullptr);
 
     // Stop the event loop
     void Stop();

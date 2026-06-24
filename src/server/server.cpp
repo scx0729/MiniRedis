@@ -30,6 +30,9 @@ Server::~Server() {
 }
 
 bool Server::Start() {
+    stop_.store(false);
+    signal_received_.store(false);
+
     // Set up signal handlers
     struct sigaction sa{};
     sa.sa_handler = SignalHandler;
@@ -109,7 +112,8 @@ void Server::Run() {
         [this](int /*fd*/) { AcceptConnection(); },
         [this](Connection& conn) { OnReadable(conn.Fd()); },
         [this](Connection& conn) { OnWritable(conn.Fd()); },
-        [this](int fd) { CloseConnection(fd); }
+        [this](int fd) { CloseConnection(fd); },
+        [this]() { OnLoopTick(); }
     );
 }
 
@@ -132,11 +136,18 @@ void Server::AcceptConnection() {
         int opt = 1;
         setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &opt, sizeof(opt));
 
-        auto conn = std::make_unique<Connection>(fd);
-        auto session = std::make_unique<Session>(*conn, *db_, *registry_, cmd_ctx_);
+        auto conn = std::make_unique<Connection>(fd, config_.max_client_input_buffer,
+                                                 config_.max_client_output_buffer);
+        ParserLimits parser_limits;
+        parser_limits.max_bulk_length = config_.max_bulk_length;
+        auto session = std::make_unique<Session>(*conn, *db_, *registry_, cmd_ctx_,
+                                                 parser_limits);
 
         // Register with epoll
-        event_loop_.AddFd(fd, EPOLLIN | EPOLLRDHUP | EPOLLERR | EPOLLHUP, conn.get());
+        if (!event_loop_.AddFd(fd, EPOLLIN | EPOLLRDHUP | EPOLLERR | EPOLLHUP,
+                               conn.get())) {
+            continue;
+        }
 
         connections_[fd] = {std::move(conn), std::move(session)};
     }
@@ -148,7 +159,13 @@ void Server::OnReadable(int fd) {
 
     auto& state = it->second;
     if (!state.conn->Read()) {
-        CloseConnection(fd);
+        if (state.conn->HasOutput()) {
+            state.conn->MarkClosing();
+            event_loop_.ModFd(fd, EPOLLOUT | EPOLLERR | EPOLLHUP,
+                              state.conn.get());
+        } else {
+            CloseConnection(fd);
+        }
         return;
     }
 
@@ -170,6 +187,8 @@ void Server::OnReadable(int fd) {
     if (state.conn->HasOutput()) {
         event_loop_.ModFd(fd, EPOLLIN | EPOLLOUT | EPOLLRDHUP | EPOLLERR | EPOLLHUP,
                           state.conn.get());
+    } else if (state.conn->IsClosing()) {
+        CloseConnection(fd);
     }
 }
 
@@ -211,8 +230,22 @@ void Server::CloseAllConnections() {
 }
 
 void Server::PerformActiveExpire() {
-    if (expiration_) {
+    if (expiration_ && db_) {
         db_->ExpireSample(20);
+    }
+}
+
+void Server::OnLoopTick() {
+    if (signal_received_.load()) {
+        Shutdown();
+        return;
+    }
+
+    int64_t now = clock_.NowMs();
+    if (last_active_expire_ms_ == 0 ||
+        now - last_active_expire_ms_ >= config_.active_expire_interval_ms) {
+        PerformActiveExpire();
+        last_active_expire_ms_ = now;
     }
 }
 

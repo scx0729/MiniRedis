@@ -6,8 +6,8 @@
 
 namespace miniredis {
 
-Connection::Connection(int fd)
-    : fd_(fd), input_(64 * 1024 * 1024), output_(64 * 1024 * 1024) {}
+Connection::Connection(int fd, size_t max_input_size, size_t max_output_size)
+    : fd_(fd), input_(max_input_size), output_(max_output_size) {}
 
 Connection::~Connection() {
     Close();
@@ -35,9 +35,11 @@ Connection& Connection::operator=(Connection&& other) noexcept {
 
 bool Connection::Read() {
     char buf[65536];
+    bool saw_data = false;
     while (true) {
         ssize_t n = recv(fd_, buf, sizeof(buf), 0);
         if (n > 0) {
+            saw_data = true;
             auto result = input_.Append(buf, static_cast<size_t>(n));
             if (!result.ok()) {
                 return false;  // buffer full, close connection
@@ -45,6 +47,10 @@ bool Connection::Read() {
             continue;  // try to read more
         }
         if (n == 0) {
+            if (saw_data) {
+                closing_ = true;
+                return true;
+            }
             return false;  // connection closed by peer
         }
         // n < 0
@@ -81,12 +87,12 @@ bool Connection::Write() {
     return true;
 }
 
-void Connection::QueueOutput(const char* data, size_t len) {
-    output_.Append(data, len);
+bool Connection::QueueOutput(const char* data, size_t len) {
+    return output_.Append(data, len).ok();
 }
 
-void Connection::QueueOutput(const std::string& data) {
-    output_.Append(data.data(), data.size());
+bool Connection::QueueOutput(const std::string& data) {
+    return QueueOutput(data.data(), data.size());
 }
 
 bool Connection::HasOutput() const {

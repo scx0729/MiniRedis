@@ -41,7 +41,8 @@ struct ParseResult {
     }
 };
 
-// Incremental RESP2 parser (state machine)
+// Incremental RESP2 parser. Callers feed newly received bytes; the parser keeps
+// incomplete and pipelined input internally until values are completed.
 class RespParser {
 public:
     explicit RespParser(ParserLimits limits = {});
@@ -52,6 +53,9 @@ public:
 
     // Reset parser state for a new connection
     void Reset();
+
+    // Whether the parser has buffered bytes that may contain another value.
+    bool HasBufferedData() const;
 
 private:
     // Parsing state
@@ -80,9 +84,7 @@ private:
     Result<int64_t> ParseInt(std::string_view s) const;
 
     ParserLimits limits_;
-    std::string line_buffer_;  // accumulates partial line data across calls
-    size_t pending_bulk_bytes_ = 0;  // bytes remaining for current bulk string
-    std::string bulk_buffer_;  // accumulates bulk string data
+    std::string input_buffer_;  // accumulates partial/pipelined input across calls
 };
 
 }  // namespace miniredis

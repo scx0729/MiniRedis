@@ -7,16 +7,16 @@ Expiration::Expiration(Clock& clock) : clock_(clock) {}
 
 void Expiration::Add(const std::string& key, int64_t expire_at_ms) {
     heap_.push({expire_at_ms, key});
-    active_keys_.insert(key);
+    active_expirations_[key] = expire_at_ms;
 }
 
 void Expiration::Remove(const std::string& key) {
-    active_keys_.erase(key);
-    // Can't efficiently remove from heap; lazy cleanup during ActiveExpire
+    active_expirations_.erase(key);
+    // Stale heap entries are discarded lazily during ActiveExpire.
 }
 
 bool Expiration::HasEntry(const std::string& key) const {
-    return active_keys_.count(key) > 0;
+    return active_expirations_.count(key) > 0;
 }
 
 size_t Expiration::ActiveExpire(Database& db, size_t max_sample) {
@@ -26,24 +26,27 @@ size_t Expiration::ActiveExpire(Database& db, size_t max_sample) {
     while (!heap_.empty() && expired < max_sample) {
         auto top = heap_.top();
 
-        // Remove stale entries (key was re-set with different TTL or deleted)
-        if (active_keys_.count(top.key) == 0) {
+        // Remove stale entries from deleted keys or overwritten TTLs.
+        auto active_it = active_expirations_.find(top.key);
+        if (active_it == active_expirations_.end() ||
+            active_it->second != top.expire_at_ms) {
             heap_.pop();
             continue;
         }
 
-        // If not expired, stop
+        // If the earliest current entry is not expired, later entries are not either.
         if (top.expire_at_ms > now) {
             break;
         }
 
         heap_.pop();
-        active_keys_.erase(top.key);
 
-        // Check if key still exists and is actually expired
+        // Check the database as the source of truth before deleting.
         if (db.IsExpired(top.key)) {
             db.Del(top.key);
             ++expired;
+        } else {
+            active_expirations_.erase(top.key);
         }
     }
 

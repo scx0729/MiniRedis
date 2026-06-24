@@ -11,9 +11,11 @@ namespace miniredis {
 RespParser::RespParser(ParserLimits limits) : limits_(limits) {}
 
 void RespParser::Reset() {
-    line_buffer_.clear();
-    pending_bulk_bytes_ = 0;
-    bulk_buffer_.clear();
+    input_buffer_.clear();
+}
+
+bool RespParser::HasBufferedData() const {
+    return !input_buffer_.empty();
 }
 
 size_t RespParser::FindCRLF(std::string_view input, size_t offset) const {
@@ -191,85 +193,22 @@ static ParseResult ParseOne(std::string_view input, size_t& pos, size_t depth,
 }
 
 ParseResult RespParser::Parse(std::string_view input) {
-    // Append input to buffer
-    line_buffer_.append(input);
+    input_buffer_.append(input);
 
-    // Check total size
-    if (line_buffer_.size() > limits_.max_bulk_length * 2) {
-        line_buffer_.clear();
+    const size_t max_buffer = limits_.max_bulk_length + limits_.max_array_length * 16 + 1024;
+    if (input_buffer_.size() > max_buffer) {
+        input_buffer_.clear();
         return ParseResult::ProtocolError(
             Error(ErrorCode::kMaxInputExceeded, "input too large"));
     }
 
-    // Check for pending bulk string data from previous parse
-    if (pending_bulk_bytes_ > 0) {
-        size_t available = line_buffer_.size();
-        if (available < pending_bulk_bytes_ + 2) {
-            // Not enough for complete bulk + CRLF
-            // But check if we have all the data and just need CRLF
-            if (available >= pending_bulk_bytes_) {
-                // We have all data bytes, need CRLF
-                if (available < pending_bulk_bytes_ + 2) {
-                    return ParseResult::NeedMoreData();
-                }
-            } else {
-                return ParseResult::NeedMoreData();
-            }
-        }
-
-        // Check CRLF after bulk data
-        if (line_buffer_[pending_bulk_bytes_] != '\r' ||
-            line_buffer_[pending_bulk_bytes_ + 1] != '\n') {
-            line_buffer_.clear();
-            pending_bulk_bytes_ = 0;
-            return ParseResult::ProtocolError(
-                Error(ErrorCode::kProtocolError, "expected CRLF after bulk string data"));
-        }
-
-        bulk_buffer_.append(line_buffer_.substr(0, pending_bulk_bytes_));
-        size_t consumed = pending_bulk_bytes_ + 2;
-        std::string result_str = std::move(bulk_buffer_);
-        bulk_buffer_.clear();
-        pending_bulk_bytes_ = 0;
-        line_buffer_.erase(0, consumed);
-        return ParseResult::Complete(consumed, RespValue::BulkString(std::move(result_str)));
-    }
-
-    // Try to parse one complete value
     size_t pos = 0;
-    auto result = ParseOne(line_buffer_, pos, 0, limits_, this);
-
-    if (result.status == ParseStatus::kNeedMoreData) {
-        // Check if we have a partial bulk string situation
-        // Look for $\r\n to detect partial bulk
-        if (!line_buffer_.empty() && line_buffer_[0] == '$') {
-            size_t crlf = FindCRLF(line_buffer_, 1);
-            if (crlf != std::string_view::npos && crlf > 1) {
-                // Parse bulk length manually
-                std::string len_copy(line_buffer_.substr(1, crlf - 1));
-                char* endp = nullptr;
-                long long bulk_len_ll = strtoll(len_copy.c_str(), &endp, 10);
-                if (*endp == '\0' && bulk_len_ll > 0) {
-                    size_t bulk_len = static_cast<size_t>(bulk_len_ll);
-                    size_t data_start = crlf + 2;
-                    if (data_start < line_buffer_.size()) {
-                        size_t available = line_buffer_.size() - data_start;
-                        if (available < bulk_len) {
-                            // We have partial bulk data
-                            pending_bulk_bytes_ = bulk_len - available;
-                            bulk_buffer_ = line_buffer_.substr(data_start, available);
-                            line_buffer_.erase(0, data_start + available);
-                            return ParseResult::NeedMoreData();
-                        }
-                    }
-                }
-            }
-        }
-        return ParseResult::NeedMoreData();
-    }
+    auto result = ParseOne(input_buffer_, pos, 0, limits_, this);
 
     if (result.status == ParseStatus::kComplete) {
-        line_buffer_.erase(0, pos);
+        input_buffer_.erase(0, pos);
+    } else if (result.status == ParseStatus::kProtocolError) {
+        input_buffer_.clear();
     }
 
     return result;

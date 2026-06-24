@@ -103,3 +103,15 @@ add_integration_test(ttl_command_test)
 add_integration_test(session_test)
 add_integration_test(pipeline_test)
 add_integration_test(recovery_test)
+
+# Blackbox TCP test (requires Python 3)
+find_package(Python3 COMPONENTS Interpreter QUIET)
+if(Python3_FOUND)
+    add_test(NAME blackbox_tcp_test
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tools/run_blackbox_tests.py
+                --server $<TARGET_FILE:miniredis-server>
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+    set_tests_properties(blackbox_tcp_test PROPERTIES
+        TIMEOUT 60
+        LABELS "blackbox")
+endif()

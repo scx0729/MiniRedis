@@ -9,7 +9,8 @@ namespace miniredis {
 // Represents a client connection with non-blocking socket I/O
 class Connection {
 public:
-    explicit Connection(int fd);
+    explicit Connection(int fd, size_t max_input_size = 64 * 1024 * 1024,
+                        size_t max_output_size = 64 * 1024 * 1024);
     ~Connection();
 
     // Non-copyable, movable
@@ -26,8 +27,8 @@ public:
     bool Write();
 
     // Queue data to be sent
-    void QueueOutput(const char* data, size_t len);
-    void QueueOutput(const std::string& data);
+    bool QueueOutput(const char* data, size_t len);
+    bool QueueOutput(const std::string& data);
 
     // Check if there is data waiting to be sent
     bool HasOutput() const;

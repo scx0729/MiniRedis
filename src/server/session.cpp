@@ -1,35 +1,49 @@
 #include "miniredis/server/session.h"
 #include "miniredis/command/executor.h"
+#include "miniredis/persistence/aof.h"
 #include "miniredis/resp/encoder.h"
 
 namespace miniredis {
 
+namespace {
+
+std::string EncodeCommandForAof(const std::vector<std::string>& args) {
+    RespValue::ArrayT values;
+    values.reserve(args.size());
+    for (const auto& arg : args) {
+        values.push_back(RespValue::BulkString(arg));
+    }
+    return RespEncoder::Encode(RespValue::MakeArray(std::move(values)));
+}
+
+}  // namespace
+
 Session::Session(Connection& conn, Database& db, const CommandRegistry& registry,
-                 CommandContext& cmd_ctx)
-    : conn_(conn), db_(db), registry_(registry), cmd_ctx_(cmd_ctx) {}
+                 CommandContext& cmd_ctx, ParserLimits parser_limits)
+    : conn_(conn), db_(db), registry_(registry), cmd_ctx_(cmd_ctx),
+      parser_(parser_limits) {}
 
 bool Session::ProcessInput() {
-    while (conn_.InputBuffer().Available() > 0) {
+    while (conn_.InputBuffer().Available() > 0 || parser_.HasBufferedData()) {
         auto input = conn_.InputBuffer().Peek();
         auto result = parser_.Parse(input);
+        if (!input.empty()) {
+            auto consume_result = conn_.InputBuffer().Consume(input.size());
+            if (!consume_result.ok()) {
+                return false;
+            }
+        }
 
         if (result.status == ParseStatus::kNeedMoreData) {
-            break;  // need more data
+            break;
         }
 
         if (result.status == ParseStatus::kProtocolError) {
-            // Send error and close connection
-            std::string err = RespEncoder::Encode(
-                RespValue::Error(result.error.message));
+            std::string err = RespEncoder::Encode(RespValue::Error(result.error.message));
             conn_.QueueOutput(err);
             return false;
         }
 
-        // Complete message parsed
-        // Consume the parsed bytes
-        conn_.InputBuffer().Consume(result.consumed);
-
-        // Extract command from RESP Array
         const auto& value = *result.value;
         if (value.type() != RespType::kArray || value.is_null()) {
             std::string err = RespEncoder::Encode(
@@ -46,15 +60,10 @@ bool Session::ProcessInput() {
             return false;
         }
 
-        // Convert array elements to command args
         std::vector<std::string> args;
         bool valid = true;
         for (const auto& elem : arr) {
-            if (!elem.has_value() || elem->type() != RespType::kBulkString) {
-                valid = false;
-                break;
-            }
-            if (elem->is_null()) {
+            if (!elem.has_value() || elem->type() != RespType::kBulkString || elem->is_null()) {
                 valid = false;
                 break;
             }
@@ -68,14 +77,23 @@ bool Session::ProcessInput() {
             return false;
         }
 
-        // Execute command
         RespValue response = CommandExecutor::Execute(cmd_ctx_, registry_, args);
 
-        // Encode response
-        std::string encoded = RespEncoder::Encode(response);
-        conn_.QueueOutput(encoded);
+        const Command* command = registry_.Find(args[0]);
+        if (command != nullptr && command->def.aof && cmd_ctx_.aof != nullptr &&
+            response.type() != RespType::kError) {
+            auto write_result = cmd_ctx_.aof->Write(EncodeCommandForAof(args));
+            if (!write_result.ok()) {
+                response = RespValue::Error("ERR AOF write failed: " +
+                                            write_result.error_message());
+            }
+        }
 
-        // Handle QUIT command
+        std::string encoded = RespEncoder::Encode(response);
+        if (!conn_.QueueOutput(encoded)) {
+            return false;
+        }
+
         if (args[0] == "QUIT" || args[0] == "quit") {
             conn_.MarkClosing();
             return true;

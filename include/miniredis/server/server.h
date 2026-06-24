@@ -48,6 +48,7 @@ private:
     void CloseConnection(int fd);
     void CloseAllConnections();
     void PerformActiveExpire();
+    void OnLoopTick();
 
     Config config_;
     SystemClock clock_;
@@ -60,6 +61,7 @@ private:
     int listen_fd_ = -1;
     EventLoop event_loop_;
     std::atomic<bool> stop_{false};
+    int64_t last_active_expire_ms_ = 0;
 
     // Connection management
     struct ConnState {

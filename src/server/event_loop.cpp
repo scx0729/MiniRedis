@@ -41,40 +41,40 @@ void EventLoop::Run(int listen_fd, std::atomic<bool>& stop,
                      std::function<void(int listen_fd)> on_accept,
                      std::function<void(Connection& conn)> on_readable,
                      std::function<void(Connection& conn)> on_writable,
-                     std::function<void(int fd)> on_close) {
+                     std::function<void(int fd)> on_close,
+                     std::function<void()> on_tick) {
     while (!stop.load()) {
-        int nfds = epoll_wait(epoll_fd_, events_, kMaxEvents, 100);  // 100ms timeout
+        int nfds = epoll_wait(epoll_fd_, events_, kMaxEvents, 100);
         if (nfds < 0) {
-            if (errno == EINTR) continue;
+            if (errno == EINTR) {
+                if (on_tick) on_tick();
+                continue;
+            }
             break;
         }
+
+        if (on_tick) on_tick();
+        if (stop.load()) break;
 
         for (int i = 0; i < nfds; ++i) {
             auto& ev = events_[i];
             auto* ptr = ev.data.ptr;
 
             if (ptr == nullptr) {
-                // This shouldn't happen with our setup
-                continue;
-            }
-
-            // Check if this is the listen socket
-            // We use a sentinel: listen_fd events have user_data == &listen_fd
-            if (ptr == &listen_fd || ev.data.fd == listen_fd) {
                 on_accept(listen_fd);
                 continue;
             }
 
-            // Connection events - ptr points to Connection
             auto* conn = static_cast<Connection*>(ptr);
-
-            if (ev.events & (EPOLLERR | EPOLLHUP)) {
-                on_close(conn->Fd());
-                continue;
-            }
 
             if (ev.events & EPOLLIN) {
                 on_readable(*conn);
+                continue;
+            }
+
+            if (ev.events & (EPOLLERR | EPOLLHUP | EPOLLRDHUP)) {
+                on_close(conn->Fd());
+                continue;
             }
 
             if (ev.events & EPOLLOUT) {
@@ -82,6 +82,7 @@ void EventLoop::Run(int listen_fd, std::atomic<bool>& stop,
             }
         }
     }
+
 }
 
 void EventLoop::Stop() {

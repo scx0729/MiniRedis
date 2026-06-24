@@ -4,7 +4,7 @@
 #include <cstdint>
 #include <queue>
 #include <string>
-#include <unordered_set>
+#include <unordered_map>
 #include <vector>
 
 namespace miniredis {
@@ -42,7 +42,7 @@ private:
 
     Clock& clock_;
     std::priority_queue<ExpireEntry, std::vector<ExpireEntry>, std::greater<>> heap_;
-    std::unordered_set<std::string> active_keys_;  // tracks which keys are in heap
+    std::unordered_map<std::string, int64_t> active_expirations_;
 };
 
 }  // namespace miniredis
