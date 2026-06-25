@@ -6,10 +6,12 @@
 #include "miniredis/storage/value.h"
 #include <algorithm>
 #include <charconv>
+#include <cstddef>
 #include <cstdint>
 #include <optional>
 #include <string>
 #include <variant>
+#include <vector>
 
 namespace miniredis {
 
@@ -227,28 +229,52 @@ Result<int64_t> Database::Decr([[maybe_unused]] const std::string& key) {
 }
 
 Result<int64_t> Database::LPush([[maybe_unused]] const std::string& key, [[maybe_unused]] const std::vector<std::string>& elements) {
-    // TODO(Task 4): push elements at the head of a list.
-    return Result<int64_t>::Ok(0);
+    auto result = GetListValue(key);
+    if(!result.ok()) { return result.error(); }
+    auto list = result.value();
+    for(auto &element : elements){
+        list->elements.push_front(element);
+    }
+    return Result<int64_t>::Ok(static_cast<int64_t>(list->elements.size()));
 }
 
 Result<int64_t> Database::RPush([[maybe_unused]] const std::string& key, [[maybe_unused]] const std::vector<std::string>& elements) {
-    // TODO(Task 4): push elements at the tail of a list.
-    return Result<int64_t>::Ok(0);
+    auto result = GetListValue(key);
+    if(!result.ok()) { return result.error(); }
+    auto list = result.value();
+    for(auto &element : elements){
+        list->elements.push_back(element);
+    }
+    return Result<int64_t>::Ok(static_cast<int64_t>(list->elements.size()));
 }
 
 Result<std::optional<std::string>> Database::LPop([[maybe_unused]] const std::string& key) {
-    // TODO(Task 4): pop the head element and delete empty lists.
-    return Result<std::optional<std::string>>::Ok(std::string{});
+    auto entry = FindEntry(key);
+    if(entry == nullptr) { return Result<std::optional<std::string>>::Ok(std::nullopt); }
+    if(!CheckType(key, ValueType::kList).ok()) { return Result<std::optional<std::string>>::Err(ErrorCode::kWrongType); }
+    auto result = GetListValue(key);
+    if(!result.ok()) { return result.error(); }
+    auto list = result.value();
+    auto val = list->elements.front();
+    list->elements.pop_front();
+    if(list->elements.size() == 0) { RemoveKey(key); }
+    return Result<std::optional<std::string>>::Ok(std::move(val));
 }
 
 Result<std::optional<std::string>> Database::RPop([[maybe_unused]] const std::string& key) {
-    // TODO(Task 4): pop the tail element and delete empty lists.
-    return Result<std::optional<std::string>>::Ok(std::string{});
+    auto entry = FindEntry(key);
+    if(entry == nullptr) { return Result<std::optional<std::string>>::Ok(std::nullopt); }
+    if(!CheckType(key, ValueType::kList).ok()) { return Result<std::optional<std::string>>::Err(ErrorCode::kWrongType); }
+    auto result = GetListValue(key);
+    if(!result.ok()) { return result.error(); }
+    auto list = result.value();
+    auto val = list->elements.back();
+    list->elements.pop_back();
+    if(list->elements.size() == 0) { RemoveKey(key); }
+    return Result<std::optional<std::string>>::Ok(std::move(val));
 }
 
 Result<int64_t> Database::LLen([[maybe_unused]] const std::string& key) {
-    // Task 3 already requires wrong-type detection for string keys.
-    // Task 4 will complete the list length behavior.
     auto* entry = FindEntry(key);
     if (entry == nullptr) return Result<int64_t>::Ok(0);
     if (!std::holds_alternative<ListValue>(entry->value)) {
@@ -259,35 +285,82 @@ Result<int64_t> Database::LLen([[maybe_unused]] const std::string& key) {
 }
 
 Result<std::vector<std::string>> Database::LRange([[maybe_unused]] const std::string& key, [[maybe_unused]] int64_t start, [[maybe_unused]] int64_t stop) {
-    // TODO(Task 4): implement Redis-style inclusive ranges with negative indexes.
-    return Result<std::vector<std::string>>::Ok({});
+    auto entry = FindEntry(key);
+    if(entry == nullptr) { return Result<std::vector<std::string>>::Ok({}); }
+    if(!CheckType(key, ValueType::kList).ok()) { return Result<std::vector<std::string>>::Err(ErrorCode::kWrongType); }
+    auto deque = std::get<ListValue>(entry->value).elements;
+    auto len = static_cast<int64_t>(deque.size());
+    if(len == 0) { return Result<std::vector<std::string>>::Ok({}); }
+    if(start < 0) start += len;
+    if(start < 0) start = 0;
+    if(stop < 0) stop += len;
+    if(stop > len - 1) stop = len - 1;
+    if(start > stop) { return Result<std::vector<std::string>>::Ok({}); }
+    std::vector<std::string> vector;
+    for(int64_t i = start;i <= stop;i++){
+        vector.push_back(deque[static_cast<size_t>(i)]);
+    }
+    return Result<std::vector<std::string>>::Ok(vector);
 }
 
 Result<int64_t> Database::HSet(
     [[maybe_unused]] const std::string& key,
     [[maybe_unused]] const std::vector<std::pair<std::string, std::string>>& fvs) {
-    // TODO(Task 4): set hash fields and return number of newly-added fields.
-    return Result<int64_t>::Ok(0);
+    auto result = GetHashValue(key);
+    if(!result.ok()) { return result.error(); }
+    auto &fields = result.value()->fields;
+    int64_t count = 0;
+    for(auto &[map_key, map_value] : fvs){
+        if(fields.find(map_key) == fields.end()){
+            count++;
+        }
+        fields[map_key] = map_value;
+    }
+    return Result<int64_t>::Ok(count);
 }
 
 Result<std::optional<std::string>> Database::HGet([[maybe_unused]] const std::string& key, [[maybe_unused]] const std::string& field) {
-    // TODO(Task 4): get one hash field or nil.
-    return Result<std::optional<std::string>>::Ok(std::string{});
+    auto entry = FindEntry(key);
+    if(entry == nullptr) { return Result<std::optional<std::string>>::Ok(std::nullopt); }
+    if(!CheckType(key, ValueType::kHash).ok()) { return Result<std::optional<std::string>>::Err(ErrorCode::kWrongType); }
+    auto &fields = std::get<HashValue>(entry->value).fields;
+    auto it = fields.find(field);
+    if(it != fields.end()) { return Result<std::optional<std::string>>::Ok(it->second); }
+    return Result<std::optional<std::string>>::Ok(std::nullopt);
 }
 
 Result<int64_t> Database::HDel([[maybe_unused]] const std::string& key, [[maybe_unused]] const std::vector<std::string>& fields) {
-    // TODO(Task 4): delete hash fields and delete empty hashes.
-    return Result<int64_t>::Ok(0);
+    auto entry = FindEntry(key);
+    if(entry == nullptr) { return Result<int64_t>::Ok(0); }
+    if(!CheckType(key, ValueType::kHash).ok()) { return Result<int64_t>::Err(ErrorCode::kWrongType); }
+    int64_t count = 0;
+    auto &map_fields = std::get<HashValue>(entry->value).fields;
+    for(auto &field : fields){
+        count += map_fields.erase(field);
+    }
+    if(map_fields.size() == 0) { RemoveKey(key); }
+    return Result<int64_t>::Ok(count);
 }
 
 Result<int64_t> Database::HLen([[maybe_unused]] const std::string& key) {
-    // TODO(Task 4): return hash field count.
-    return Result<int64_t>::Ok(0);
+    auto entry = FindEntry(key);
+    if(entry == nullptr) { return Result<int64_t>::Ok(0); }
+    if(!CheckType(key, ValueType::kHash).ok()) { return Result<int64_t>::Err(ErrorCode::kWrongType); }
+    auto &fields = std::get<HashValue>(entry->value).fields;
+    return Result<int64_t>::Ok(static_cast<int64_t>(fields.size()));
 }
 
 Result<std::vector<std::string>> Database::HGetAll([[maybe_unused]] const std::string& key) {
-    // TODO(Task 4): return deterministic field/value pairs.
-    return Result<std::vector<std::string>>::Ok({});
+    auto entry = FindEntry(key);
+    if(entry == nullptr) { return Result<std::vector<std::string>>::Ok({}); }
+    if(!CheckType(key, ValueType::kHash).ok()) { return Result<std::vector<std::string>>::Err(ErrorCode::kWrongType); }
+    auto &fields = std::get<HashValue>(entry->value).fields;
+    std::vector<std::string> vector;
+    for(auto &field : fields){
+        vector.push_back(field.first);
+        vector.push_back(field.second);
+    }
+    return Result<std::vector<std::string>>::Ok(vector);
 }
 
 void Database::SetExpireMs([[maybe_unused]] const std::string& key, [[maybe_unused]] int64_t expire_ms) {
