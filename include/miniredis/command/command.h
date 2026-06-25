@@ -1,6 +1,7 @@
 #pragma once
 
 #include "miniredis/resp/value.h"
+#include "miniredis/storage/database.h"
 #include <cstdint>
 #include <string>
 #include <vector>
