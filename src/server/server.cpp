@@ -205,14 +205,18 @@ void Server::CloseAllConnections() {
 }
 
 void Server::PerformActiveExpire() {
-    // TODO(Task 7): run a bounded active expiration sample.
+    db_->ExpireSample(20);
 }
 
 void Server::OnLoopTick() {
-    // TODO(Task 7): drive active expiration periodically.
     if(signal_received_.load()){
         Shutdown();
         return;
+    }
+    auto now = clock_.NowMs();
+    if(last_active_expire_ms_ == 0 || (now - last_active_expire_ms_) >= config_.active_expire_interval_ms){
+        PerformActiveExpire();
+        last_active_expire_ms_ = now;
     }
 }
 

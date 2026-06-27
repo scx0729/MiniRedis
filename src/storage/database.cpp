@@ -21,16 +21,25 @@ Database::Database(Clock& clock, Expiration* expiration)
 Entry* Database::FindEntry([[maybe_unused]] const std::string& key) {
     auto it = data_.find(key);
     if(it == data_.end()) { return nullptr; }
+    if(it->second.IsExpired(clock_.NowMs())){
+        if(expiration_) expiration_->Remove(key);
+        data_.erase(it);
+        return nullptr;
+    }
     return &it->second;
 }
 
 const Entry* Database::FindEntry([[maybe_unused]] const std::string& key) const {
     auto it = data_.find(key);
     if(it == data_.end()) { return nullptr; }
+    if(it->second.IsExpired(clock_.NowMs())){
+        return nullptr;
+    }
     return &it->second;
 }
 
 void Database::RemoveKey([[maybe_unused]] const std::string& key) {
+    if(expiration_) expiration_->Remove(key);
     data_.erase(key);
 }
 
@@ -126,6 +135,9 @@ Result<void> Database::Set([[maybe_unused]] const std::string& key, [[maybe_unus
         RemoveKey(key);
     }
     data_[key] = Entry{StringValue{std::move(value)}, -1};
+    if(expire_ms > 0){
+        SetExpireMs(key, expire_ms);
+    }
     return Result<void>::Ok();
 }
 
@@ -364,26 +376,36 @@ Result<std::vector<std::string>> Database::HGetAll([[maybe_unused]] const std::s
 }
 
 void Database::SetExpireMs([[maybe_unused]] const std::string& key, [[maybe_unused]] int64_t expire_ms) {
-    // TODO(Task 7): set/update absolute expiration metadata.
+    auto entry = FindEntry(key);
+    if(entry == nullptr) { return; }
+    auto expire_at = static_cast<int64_t>(clock_.NowMs() + expire_ms);
+    entry->expire_at_ms = expire_at;
+    expiration_->Add(key, expire_at);
 }
 
 void Database::ClearExpire([[maybe_unused]] const std::string& key) {
-    // TODO(Task 7): remove expiration metadata.
+    auto entry = FindEntry(key);
+    if(entry == nullptr) { return; }
+    entry->expire_at_ms = -1;
+    expiration_->Remove(key);
 }
 
 int64_t Database::GetExpireMs([[maybe_unused]] const std::string& key) const {
-    // TODO(Task 7): return -2 missing, -1 persistent, or remaining ms.
-    return -2;
+    auto entry = FindEntry(key);
+    if(entry == nullptr) { return -2; }
+    if(entry->expire_at_ms < 0) { return -1; }
+    return entry->expire_at_ms - clock_.NowMs();
 }
 
 bool Database::IsExpired([[maybe_unused]] const std::string& key) {
-    // TODO(Task 7): check whether key is expired at current clock time.
-    return false;
+    auto it = data_.find(key);
+    if(it == data_.end()) { return false; }
+    return it->second.IsExpired(clock_.NowMs());
 }
 
 size_t Database::ExpireSample([[maybe_unused]] size_t count) {
-    // TODO(Task 7): delegate active expiration to Expiration.
-    return 0;
+    if(!expiration_) return 0;
+    return expiration_->ActiveExpire(*this, count);
 }
 
 }  // namespace miniredis
