@@ -2,6 +2,8 @@
 #include "miniredis/server/connection.h"
 #include <unistd.h>
 #include <utility>
+#include <sys/socket.h>
+#include <cerrno>
 
 namespace miniredis {
 
@@ -33,13 +35,43 @@ Connection& Connection::operator=(Connection&& other) noexcept {
 }
 
 bool Connection::Read() {
-    // TODO(Task 6): recv() until EAGAIN/EWOULDBLOCK, appending bytes to input_.
-    return false;
+    char buffer[65536];
+    bool saw_data = false;
+    while(true){
+        auto n = recv(fd_, buffer, sizeof(buffer), 0);
+        if(n > 0){
+            saw_data = true;
+            auto result = input_.Append(buffer, static_cast<size_t>(n));
+            if(!result.ok()) { return false; }
+            continue;
+        } else if(n == 0){
+            if(saw_data){
+                closing_ = true;
+                return true;
+            }
+            return false;
+        } else {
+            if(errno == EAGAIN || errno == EWOULDBLOCK) { return true; }
+            if(errno == EINTR) { continue; }
+            return false;
+        }
+    }
 }
 
 bool Connection::Write() {
-    // TODO(Task 6): send() from output_ until empty or EAGAIN/EWOULDBLOCK.
-    return false;
+    while(true){
+        auto buffer = output_.Peek();
+        if(buffer.empty()) break;
+        auto n = send(fd_, buffer.data(), buffer.size(), MSG_NOSIGNAL);
+        if(n > 0){
+            output_.Consume(static_cast<size_t>(n));
+        } else {
+            if(errno == EAGAIN || errno == EWOULDBLOCK) { return true; }
+            if(errno == EINTR) { continue; }
+            return false;
+        }
+    }
+    return true;
 }
 
 bool Connection::QueueOutput(const char* data, size_t len) {
