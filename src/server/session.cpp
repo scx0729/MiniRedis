@@ -4,7 +4,9 @@
 #include "miniredis/resp/encoder.h"
 #include "miniredis/resp/parser.h"
 #include "miniredis/resp/value.h"
+#include "miniredis/persistence/aof.h"
 #include <cctype>
+#include <cstddef>
 #include <string>
 #include <vector>
 
@@ -65,13 +67,27 @@ bool Session::ProcessInput() {
       }
       // 执行命令
       auto response = CommandExecutor::Execute(cmd_ctx_,registry_, args);
+      auto cmd = args[0];
+      const auto command = registry_.Find(cmd);
+      if(response.type() != RespType::kError && command != nullptr && command->def.aof && cmd_ctx_.aof != nullptr){
+        RespValue::ArrayT aof_args;
+        for(const auto& arg : args){
+          aof_args.push_back(RespValue::BulkString(arg));
+        }
+        auto encoded_cmd = RespEncoder::Encode(RespValue::MakeArray(aof_args));
+        auto write_result = cmd_ctx_.aof->Write(encoded_cmd);
+        if(!write_result.ok()){
+          auto err = RespEncoder::Encode((RespValue::Error(write_result.error_message())));
+          conn_.QueueOutput(err);
+          return false;
+        }
+      }
       // 编码响应并写入输出缓冲区
       auto encoded = RespEncoder::Encode(response);
       if(!conn_.QueueOutput(encoded)){
         return false;
       }
       // 处理QUIT
-      auto cmd = args[0];
       for(auto &ch : cmd) { ch = static_cast<char>(std::toupper(ch)); }
       if(cmd == "QUIT"){
         conn_.MarkClosing();

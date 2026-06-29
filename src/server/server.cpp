@@ -2,6 +2,7 @@
 #include "miniredis/server/server.h"
 #include "miniredis/command/command.h"
 #include "miniredis/command/registry.h"
+#include "miniredis/persistence/aof.h"
 #include "miniredis/persistence/aof_replay.h"  // AOF 启动恢复
 #include "miniredis/resp/encoder.h"
 #include "miniredis/resp/value.h"
@@ -53,8 +54,14 @@ bool Server::Start() {
     expiration_ = std::make_unique<Expiration>(clock_);
     db_ = std::make_unique<Database>(clock_, expiration_.get());
     registry_ = std::make_unique<CommandRegistry>();
+    if(config_.appendonly){
+        aof_ = std::make_unique<AofWriter>(config_.appendfilename, config_.fsync_always);
+        auto replay_result = AofReplay::Replay(config_.appendfilename, *db_, *registry_);
+        if(!replay_result.ok()){
+            return false;
+        }
+    }
     cmd_ctx_ = CommandContext{db_.get(), aof_.get()};
-    // TODO(Task 8): create AOF writer and replay append-only file on startup.
     if(!CreateListenSocket()){
         return false;
     }
